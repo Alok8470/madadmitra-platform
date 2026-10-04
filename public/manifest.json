@@ -1,0 +1,18 @@
+{
+  "short_name": "MadadMitra",
+  "name": "MadadMitra — Trusted Household Helpers",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "display": "standalone",
+  "orientation": "portrait",
+  "description": "Book verified cooks, cleaners, electricians and domestic helpers at just ₹10 platform fee."
+}
