@@ -87,6 +87,42 @@ export type PaymentStatus =
   | 'refunded'
   | 'disputed';
 
+export interface ServiceItemSKU {
+  id: string;
+  serviceId: ServiceId;
+  title: string;
+  titleHi: string;
+  description: string;
+  descriptionHi: string;
+  price: number;
+  timeEstimateMins: number;
+  included: string[];
+  excluded: string[];
+  badge?: string;
+}
+
+export interface HardwarePartItem {
+  id: string;
+  serviceId: ServiceId;
+  name: string;
+  nameHi: string;
+  mrp: number;
+  hardwareStoreShop: string;
+  brand: string;
+  warranty: string;
+  inStock: boolean;
+}
+
+export interface CartItem {
+  sku: ServiceItemSKU;
+  quantity: number;
+}
+
+export interface CartPartItem {
+  part: HardwarePartItem;
+  quantity: number;
+}
+
 export interface MealPlanConfig {
   rotisCount: number;
   dalType: string;

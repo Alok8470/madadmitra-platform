@@ -14,6 +14,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { SERVICES, SERVICE_LABELS, TESTIMONIALS, type ServiceId } from '../data/mockData';
 import SavingsCalculator from './SavingsCalculator';
 import SOSBookingModal from './SOSBookingModal';
+import UrbanCompanyComparison from './UrbanCompanyComparison';
 
 const QUICK_FILTERS: { id: ServiceId | 'all'; label: string }[] = [
   { id: 'all', label: 'All Services' },
@@ -395,6 +396,9 @@ export default function Homepage() {
           })}
         </div>
       </section>
+
+      {/* FACTUAL TEARDOWN: MADADMITRA VS URBAN COMPANY */}
+      <UrbanCompanyComparison />
 
       {/* SAVINGS CALCULATOR (MADADMITRA VS COMPETITION) */}
       <section className="mx-auto max-w-6xl px-4 sm:px-6 mt-14">

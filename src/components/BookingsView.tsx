@@ -261,7 +261,17 @@ export default function BookingsView() {
                   )}
 
                   {b.status === 'completed' && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => {
+                          alert(`Re-work Warranty Claim Raised for ${b.bookingCode || 'MM-JOB'}! A senior technician from ${b.area} will revisit within 24 hours at ₹0 charge under Madad Suraksha.`);
+                        }}
+                        className="btn-ghost py-2 px-3 text-xs flex items-center gap-1.5 text-emerald-800 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 font-bold"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" />
+                        <span>Claim 7-Day Free Re-work</span>
+                      </button>
+
                       {ratedBookings[b.id] ? (
                         <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-xl">
                           <Star className="h-3.5 w-3.5 fill-amber-400" /> Rated {ratedBookings[b.id]} Stars
@@ -269,7 +279,7 @@ export default function BookingsView() {
                       ) : (
                         <button
                           onClick={() => setRatingTarget(b)}
-                          className="btn-ghost py-2 px-3 text-xs flex items-center gap-1 text-amber-700 border-amber-200 hover:bg-amber-50"
+                          className="btn-ghost py-2 px-3 text-xs flex items-center gap-1 text-amber-700 border-amber-200 hover:bg-amber-50 font-bold"
                         >
                           <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> Rate Experience
                         </button>
