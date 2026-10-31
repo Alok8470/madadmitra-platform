@@ -135,65 +135,90 @@ export default function Homepage() {
               </div>
 
               {/* Frequently Asked Search Prompts */}
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-300 w-full min-w-0">
-                <span className="font-semibold text-amber-300 text-[11px] block sm:inline shrink-0">
-                  {isHi ? '💡 अक्सर पूछे जाने वाले:' : '💡 Frequently Asked:'}
-                </span>
-                {(isHi
-                  ? [
-                      { text: 'नल टपक रहा है (Plumber)', filterKey: 'plumber' },
-                      { text: 'पंखा/लाइट फिटिंग (Electrician)', filterKey: 'electrician' },
-                      { text: 'घर की सफाई (Maid)', filterKey: 'cleaner' },
-                      { text: 'दैनिक खाना (Cook)', filterKey: 'cook' },
-                    ]
-                  : [
-                      { text: 'Leaking Tap (Plumber)', filterKey: 'plumber' },
-                      { text: 'Fan & Light Fitting (Electrician)', filterKey: 'electrician' },
-                      { text: 'House Cleaning (Maid)', filterKey: 'cleaner' },
-                      { text: 'Daily Cooking (Cook)', filterKey: 'cook' },
-                    ]
-                ).map((chip) => (
-                  <button
-                    key={chip.text}
-                    type="button"
-                    onClick={() => {
-                      setFilter(chip.filterKey as ServiceId);
-                      setQuery('');
-                      handleSearch();
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 text-[11px] font-medium border border-white/15 transition-all text-left max-w-full break-words"
-                  >
-                    {chip.text}
-                  </button>
-                ))}
+              <div className="mt-4 sm:mt-5 w-full min-w-0">
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <span className="text-[11px] sm:text-xs font-bold text-amber-300 tracking-wide flex items-center gap-1.5">
+                    💡 {isHi ? 'अक्सर पूछे जाने वाले सुझाव:' : 'Frequently Asked Searches:'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 w-full min-w-0">
+                  {(isHi
+                    ? [
+                        { text: 'नल टपक रहा है (Plumber)', filterKey: 'plumber' },
+                        { text: 'पंखा/लाइट फिटिंग (Electrician)', filterKey: 'electrician' },
+                        { text: 'घर की सफाई (Maid)', filterKey: 'cleaner' },
+                        { text: 'दैनिक खाना (Cook)', filterKey: 'cook' },
+                      ]
+                    : [
+                        { text: 'Leaking Tap (Plumber)', filterKey: 'plumber' },
+                        { text: 'Fan & Light Fitting (Electrician)', filterKey: 'electrician' },
+                        { text: 'House Cleaning (Maid)', filterKey: 'cleaner' },
+                        { text: 'Daily Cooking (Cook)', filterKey: 'cook' },
+                      ]
+                  ).map((chip) => (
+                    <button
+                      key={chip.text}
+                      type="button"
+                      onClick={() => {
+                        setFilter(chip.filterKey as ServiceId);
+                        setQuery('');
+                        handleSearch();
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-100 text-xs font-medium border border-white/15 transition-all text-left max-w-full break-words shadow-xs backdrop-blur-sm"
+                    >
+                      {chip.text}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Quick Filter Pills */}
-              <div className="mt-4 flex flex-wrap gap-2 w-full min-w-0">
-                {QUICK_FILTERS.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => {
-                      setFilter(f.id);
-                      handleSearch();
-                    }}
-                    className={`pill text-xs ${
-                      filter === f.id
-                        ? 'bg-amber-400 text-slate-950 font-bold shadow-soft'
-                        : 'bg-white/10 text-white ring-1 ring-white/15 hover:bg-white/20'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+              {/* Quick Filter Categories */}
+              <div className="mt-5 sm:mt-6 w-full min-w-0">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-300/90">
+                    {isHi ? 'सेवा श्रेणी चुनें' : 'Browse by Category'}
+                  </span>
+                  {filter !== 'all' && (
+                    <button
+                      onClick={() => {
+                        setFilter('all');
+                        handleSearch();
+                      }}
+                      className="text-[11px] font-bold text-amber-300 hover:text-amber-200 transition-colors"
+                    >
+                      {isHi ? 'सभी देखें (Reset)' : 'View All (Reset)'}
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 sm:gap-2.5 w-full min-w-0">
+                  {QUICK_FILTERS.map((f) => {
+                    const isActive = filter === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => {
+                          setFilter(f.id);
+                          handleSearch();
+                        }}
+                        className={`inline-flex items-center justify-center px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xs ${
+                          isActive
+                            ? 'bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300/60 scale-[1.02]'
+                            : 'bg-white/10 text-white border border-white/20 hover:bg-white/20 backdrop-blur-sm'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Quick Action Button */}
-              <div className="mt-5 flex flex-wrap gap-2.5 w-full min-w-0">
+              <div className="mt-6 sm:mt-7 w-full min-w-0">
                 <button
                   type="button"
                   onClick={() => setShowSosModal(true)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 text-slate-950 font-black px-4 py-3 sm:py-2.5 text-xs shadow-lg hover:bg-amber-300 transition-all active:scale-95 min-h-[44px] max-w-full text-center"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-2xl bg-amber-400 text-slate-950 font-black px-4 py-3.5 sm:py-3 text-xs sm:text-sm shadow-lg hover:bg-amber-300 transition-all active:scale-95 min-h-[48px] max-w-full text-center"
                 >
                   <Zap className="h-4 w-4 fill-slate-950 animate-bounce shrink-0" />
                   <span className="break-words">🚨 Urgent 30-Min Dispatch (Emergency Helper)</span>
@@ -201,7 +226,7 @@ export default function Homepage() {
               </div>
 
               {/* Trust badges */}
-              <div className="mt-6 sm:mt-7 flex flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-2 text-xs font-semibold text-slate-200">
+              <div className="mt-6 sm:mt-7 flex flex-wrap items-center gap-x-5 gap-y-2.5 text-xs font-semibold text-slate-200">
                 <span className="flex items-center gap-1.5">
                   <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" /> Aadhaar & Police Verified
                 </span>
