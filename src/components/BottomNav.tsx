@@ -17,7 +17,7 @@ export default function BottomNav() {
   const isWorkerRole = currentUser?.role === 'worker';
 
   return (
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 w-full max-w-full bg-white/95 backdrop-blur-lg border-t border-slate-200/90 px-2 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] touch-manipulation select-none">
+    <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 px-2 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] touch-manipulation select-none box-border">
       <div className="flex items-center justify-around text-[10px] font-bold w-full max-w-md mx-auto">
         {isWorkerRole ? (
           <>
@@ -84,10 +84,10 @@ export default function BottomNav() {
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <div className="relative">
+              <div className="relative inline-flex items-center justify-center">
                 <CalendarCheck className={`h-5 w-5 ${view === 'bookings' ? 'stroke-[2.5]' : ''}`} />
                 {upcomingCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-brand-600 text-[9px] font-black text-white shadow-xs animate-pulse">
+                  <span className="absolute -top-1 -right-1.5 flex h-3.5 min-w-[14px] px-1 items-center justify-center rounded-full bg-brand-600 text-[8px] font-black text-white shadow-xs animate-pulse">
                     {upcomingCount}
                   </span>
                 )}

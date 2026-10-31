@@ -146,8 +146,8 @@ export const UrbanCompanyComparison: React.FC = () => {
     <section className="mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-10 w-full max-w-full overflow-hidden">
       <div className="rounded-3xl border-2 border-slate-200/90 bg-white p-4 sm:p-10 shadow-elevated relative overflow-hidden w-full max-w-full">
         {/* Subtle Ambient Glow */}
-        <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute -left-20 bottom-0 h-72 w-72 rounded-full bg-brand-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute right-0 top-0 h-48 sm:h-72 w-48 sm:w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute left-0 bottom-0 h-48 sm:h-72 w-48 sm:w-72 rounded-full bg-brand-500/10 blur-3xl pointer-events-none" />
 
         {/* Section Header */}
         <div className="relative z-10 text-center max-w-3xl mx-auto">

@@ -110,19 +110,19 @@ export default function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs w-full max-w-full overflow-hidden">
-      <div className="mx-auto max-w-6xl px-2.5 sm:px-6">
-        <div className="flex h-16 items-center justify-between gap-1.5 sm:gap-3">
+    <header className="sticky top-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs box-border">
+      <div className="mx-auto max-w-6xl px-2 sm:px-6 w-full box-border">
+        <div className="flex h-15 sm:h-16 items-center justify-between gap-1 sm:gap-3">
           {/* Logo */}
-          <button onClick={() => setView('home')} className="flex items-center gap-2 sm:gap-2.5 shrink-0 text-left group">
-            <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-soft group-hover:scale-105 transition-transform shrink-0">
-              <Handshake className="h-5 w-5" />
+          <button onClick={() => setView('home')} className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 text-left group">
+            <div className="grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-soft group-hover:scale-105 transition-transform shrink-0">
+              <Handshake className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </div>
             <div className="leading-tight">
-              <div className="font-display text-base sm:text-lg font-black tracking-tight text-slate-900">
+              <div className="font-display text-sm sm:text-lg font-black tracking-tight text-slate-900">
                 Madad<span className="text-brand-600">Mitra</span>
               </div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 hidden xs:block">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 hidden sm:block">
                 {language === 'hi' ? 'भरोसेमंद मददगार' : 'Trusted Helpers'}
               </div>
             </div>
@@ -134,22 +134,23 @@ export default function Header() {
             <button
               onClick={toggleLanguage}
               title="Toggle English / हिंदी"
-              className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-slate-200/90 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-xs shrink-0"
+              className="flex items-center gap-1 rounded-xl border border-slate-200/90 bg-white px-1.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-xs shrink-0"
             >
-              <Languages className="h-3.5 w-3.5 text-brand-600 shrink-0" />
-              <span className="tracking-wide">{language === 'en' ? 'हिंदी' : 'English'}</span>
+              <Languages className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-brand-600 shrink-0" />
+              <span>{language === 'en' ? 'हिं' : 'EN'}</span>
+              <span className="hidden sm:inline">{language === 'en' ? 'दी' : 'g'}</span>
             </button>
 
             {/* Location selector */}
             <div ref={cityRef} className="relative">
               <button
                 onClick={() => setCityOpen((o) => !o)}
-                className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-slate-200/90 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-xs shrink-0"
+                className="flex items-center gap-1 rounded-xl border border-slate-200/90 bg-white px-1.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-xs shrink-0"
               >
-                <MapPin className="h-3.5 w-3.5 text-brand-600 shrink-0" />
-                <span className="max-w-[68px] xs:max-w-[85px] sm:max-w-[130px] truncate">{city}</span>
+                <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-brand-600 shrink-0" />
+                <span className="max-w-[55px] xs:max-w-[80px] sm:max-w-[130px] truncate">{city}</span>
                 <ChevronDown
-                  className={`h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+                  className={`h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
                     cityOpen ? 'rotate-180' : ''
                   }`}
                 />
@@ -277,11 +278,11 @@ export default function Header() {
               <div ref={userRef} className="relative shrink-0">
                 <button
                   onClick={() => setUserMenuOpen((o) => !o)}
-                  className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-bold text-brand-700 hover:bg-brand-100 transition-colors shrink-0"
+                  className="flex items-center gap-1 rounded-xl border border-brand-200 bg-brand-50 px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-sm font-bold text-brand-700 hover:bg-brand-100 transition-colors shrink-0"
                 >
-                  <User className="h-3.5 w-3.5" />
-                  <span className="max-w-[70px] sm:max-w-[80px] truncate">{currentUser.fullName}</span>
-                  <ChevronDown className="h-3 w-3" />
+                  <User className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
+                  <span className="max-w-[55px] xs:max-w-[70px] sm:max-w-[80px] truncate">{currentUser.fullName}</span>
+                  <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
                 </button>
 
                 {userMenuOpen && (
@@ -402,11 +403,11 @@ export default function Header() {
             ) : (
               <button
                 onClick={() => openAuth('customer')}
-                className="btn-primary px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm shrink-0"
+                className="btn-primary px-2 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm shrink-0"
               >
-                <LogIn className="h-3.5 w-3.5" />
+                <LogIn className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
                 <span className="hidden sm:inline">{t.loginSignUp}</span>
-                <span className="sm:hidden text-xs">Login</span>
+                <span className="sm:hidden">Login</span>
               </button>
             )}
           </div>

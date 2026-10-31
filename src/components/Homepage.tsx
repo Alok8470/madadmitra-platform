@@ -87,8 +87,8 @@ export default function Homepage() {
             backgroundSize: '28px 28px',
           }}
         />
-        <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-accent-400/20 blur-3xl pointer-events-none" />
-        <div className="absolute -left-20 bottom-0 h-80 w-80 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute right-0 top-0 h-48 sm:h-80 w-48 sm:w-80 rounded-full bg-accent-400/20 blur-3xl pointer-events-none" />
+        <div className="absolute left-0 bottom-0 h-48 sm:h-80 w-48 sm:w-80 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
 
         <div className="relative mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-16 lg:py-20 w-full max-w-full">
           <div className="grid items-center gap-8 lg:gap-10 lg:grid-cols-12">

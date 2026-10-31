@@ -164,8 +164,8 @@ export default function CategoryPage() {
       <div
         className={`rounded-3xl bg-gradient-to-br ${categoryData.accent} p-5 sm:p-10 text-white shadow-elevated relative overflow-hidden mb-6 w-full max-w-full`}
       >
-        <div className="absolute -right-8 -top-8 opacity-20 transform rotate-12 pointer-events-none">
-          <Icon className="w-56 h-56" />
+        <div className="absolute right-0 top-0 opacity-15 pointer-events-none overflow-hidden">
+          <Icon className="w-36 h-36 sm:w-56 sm:h-56 transform translate-x-4 -translate-y-4" />
         </div>
         <div className="relative z-10 max-w-xl">
           <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -561,27 +561,29 @@ export default function CategoryPage() {
 
       {/* STICKY BOTTOM FLOATING CART TRAY (CLEARANCE FOR MOBILE BOTTOMNAV) */}
       {totalCartCount > 0 && (
-        <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:bottom-6 left-3 right-3 sm:left-4 sm:right-4 max-w-2xl mx-auto z-40 animate-slide-up">
-          <div className="rounded-2xl bg-slate-950 text-white p-3.5 sm:p-4 shadow-elevated border-2 border-emerald-400 flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 truncate">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span className="truncate">
-                  {totalCartCount} Item(s) • ₹{grandTotal} (Incl. ₹15 Cover)
-                </span>
+        <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 inset-x-0 z-40 px-3 sm:px-4 pointer-events-none animate-slide-up">
+          <div className="max-w-2xl mx-auto pointer-events-auto">
+            <div className="rounded-2xl bg-slate-950 text-white p-3 sm:p-4 shadow-elevated border-2 border-emerald-400 flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 truncate">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {totalCartCount} Item(s) • ₹{grandTotal} (Incl. ₹15 Cover)
+                  </span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-slate-300 mt-0.5 truncate">
+                  {isHi ? '30-मिनट तत्काल डिस्पैच उपलब्ध' : 'Instant 30-min technician dispatch to your door'}
+                </p>
               </div>
-              <p className="text-[10px] sm:text-[11px] text-slate-300 mt-0.5 truncate">
-                {isHi ? '30-मिनट तत्काल डिस्पैच उपलब्ध' : 'Instant 30-min technician dispatch to your door'}
-              </p>
-            </div>
 
-            <button
-              onClick={() => setShowRadarModal(true)}
-              className="btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-2.5 sm:py-3 px-4 sm:px-5 text-xs rounded-xl shadow-soft flex items-center gap-1.5 shrink-0 active:scale-95 transition-transform min-h-[44px]"
-            >
-              <Zap className="h-4 w-4 fill-slate-950" />
-              <span>{isHi ? 'तत्काल बुक करें' : 'Dispatch Now'}</span>
-            </button>
+              <button
+                onClick={() => setShowRadarModal(true)}
+                className="btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-2.5 sm:py-3 px-3.5 sm:px-5 text-xs rounded-xl shadow-soft flex items-center gap-1.5 shrink-0 active:scale-95 transition-transform min-h-[44px]"
+              >
+                <Zap className="h-4 w-4 fill-slate-950" />
+                <span>{isHi ? 'तत्काल बुक करें' : 'Dispatch Now'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

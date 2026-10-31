@@ -183,7 +183,7 @@ export default function WorkerProfilePage({ worker, onBack }: Props) {
             </div>
 
             {/* Bottom Bar for Daily Booking */}
-            <div className="fixed bottom-0 left-0 right-0 w-full max-w-full border-t border-slate-200 bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-2xl z-40">
+            <div className="fixed bottom-0 inset-x-0 border-t border-slate-200 bg-white px-3 sm:px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-2xl z-40 box-border">
                 <div className="max-w-4xl mx-auto flex items-center justify-between">
                     <div>
                         <p className="text-xs font-semibold text-slate-400">One-time Trial (1 Hour)</p>
