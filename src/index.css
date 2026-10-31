@@ -20,31 +20,40 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 shadow-soft px-5 py-3;
+    @apply btn bg-brand-600 text-white hover:bg-brand-700 shadow-soft px-5 py-3 hover:shadow-card;
   }
   .btn-accent {
-    @apply btn bg-accent-400 text-slate-900 hover:bg-accent-300 shadow-soft px-5 py-3;
+    @apply btn bg-accent-400 text-slate-950 font-bold hover:bg-accent-300 shadow-soft px-5 py-3 hover:shadow-card;
   }
   .btn-ghost {
-    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 px-4 py-2.5;
+    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 px-4 py-2.5;
   }
   .btn-outline {
     @apply btn bg-transparent text-brand-700 border border-brand-200 hover:bg-brand-50 px-4 py-2.5;
   }
   .card {
-    @apply bg-white rounded-2xl border border-slate-100 shadow-card;
+    @apply bg-white rounded-2xl border border-slate-200/80 shadow-card transition-shadow duration-200;
+  }
+  .card-hover {
+    @apply card hover:shadow-elevated hover:border-slate-300 transition-all duration-200;
   }
   .pill {
-    @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-all duration-200 active:scale-95;
+    @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-95;
   }
   .input {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-brand-400 focus:shadow-glow;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20;
   }
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide;
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide;
+  }
+  .skeleton {
+    @apply bg-slate-200/80 animate-pulse rounded-xl;
+  }
+  .touch-target-lg {
+    @apply min-h-[56px] min-w-[56px];
   }
 }
 

@@ -165,9 +165,27 @@ export default function CheckoutWizard({ worker, plan, onClose }: Props) {
                     </div>
                 </div>
 
-                <button onClick={onClose} className="btn-primary w-full py-4 text-base font-bold shadow-lg">
-                    Return to Dashboard
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                        onClick={() => {
+                            const text = encodeURIComponent(
+                                `*MadadMitra Booking Confirmed!*\n` +
+                                `• Helper: ${worker.name} (${SERVICE_LABELS[worker.service]})\n` +
+                                `• Date & Time: ${selectedDate} at ${selectedTime}\n` +
+                                `• Start OTP: ${generatedOtps.start}\n` +
+                                `• Total Bill: ₹${totalFee}\n` +
+                                `Address: ${address}`
+                            );
+                            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+                        }}
+                        className="btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 shadow-soft flex-1 active:scale-95 transition-transform"
+                    >
+                        <span>📲 WhatsApp Summary to Family</span>
+                    </button>
+                    <button onClick={onClose} className="btn-primary py-3.5 px-6 text-sm font-bold shadow-soft flex-1">
+                        Return to Dashboard
+                    </button>
+                </div>
             </div>
         );
     }

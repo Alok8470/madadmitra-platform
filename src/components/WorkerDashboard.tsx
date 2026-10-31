@@ -36,6 +36,27 @@ export default function WorkerDashboard() {
   const [endOtpInputs, setEndOtpInputs] = useState<Record<string, string>>({});
   const [otpErrors, setOtpErrors] = useState<Record<string, string>>({});
   const [successNotices, setSuccessNotices] = useState<Record<string, string>>({});
+  const [activeKeypad, setActiveKeypad] = useState<{ id: string; type: 'start' | 'end' } | null>(null);
+
+  const handleKeypadPress = (bookingId: string, type: 'start' | 'end', digit: string) => {
+    if (type === 'start') {
+      const cur = startOtpInputs[bookingId] || '';
+      if (cur.length < 4) setStartOtpInputs((p) => ({ ...p, [bookingId]: cur + digit }));
+    } else {
+      const cur = endOtpInputs[bookingId] || '';
+      if (cur.length < 4) setEndOtpInputs((p) => ({ ...p, [bookingId]: cur + digit }));
+    }
+  };
+
+  const handleKeypadBackspace = (bookingId: string, type: 'start' | 'end') => {
+    if (type === 'start') {
+      const cur = startOtpInputs[bookingId] || '';
+      setStartOtpInputs((p) => ({ ...p, [bookingId]: cur.slice(0, -1) }));
+    } else {
+      const cur = endOtpInputs[bookingId] || '';
+      setEndOtpInputs((p) => ({ ...p, [bookingId]: cur.slice(0, -1) }));
+    }
+  };
 
   // If user is not logged in as a worker, show the Dedicated Partner Onboarding Portal
   if (currentUser?.role !== 'worker') {
@@ -324,6 +345,20 @@ export default function WorkerDashboard() {
                 ? '1 सिक्का = 1 ग्राहक का काम (₹10)। काम का 100% पैसा (₹150 - ₹350) सीधे ग्राहक से आपको मिलता है। 0% कमीशन।'
                 : '1 Token = 1 Confirmed Customer Lead (₹10). You keep 100% of customer payments (₹150 - ₹350) with Zero Commission.'}
             </p>
+
+            {/* Visual Token Fuel Gauge */}
+            <div className="mt-3.5 max-w-xs">
+              <div className="flex items-center justify-between text-[11px] font-bold text-amber-300 mb-1">
+                <span>{isHi ? 'वॉलेट क्षमता' : 'Lead Capacity'}</span>
+                <span>{sikkaBalance} / 10</span>
+              </div>
+              <div className="w-full bg-white/15 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-amber-400 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (sikkaBalance / 10) * 100)}%` }}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -342,6 +377,28 @@ export default function WorkerDashboard() {
               <span>{isHi ? 'टेस्ट नया काम' : 'Simulate Demo Alert'}</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* TODAY'S SHIFT SUMMARY RIBBON */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600 font-bold">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+              {isHi ? 'आज की शिफ्ट' : "Today's Active Shift"}
+            </span>
+            <p className="font-extrabold text-slate-900 text-sm sm:text-base">
+              {completedJobs} {isHi ? 'काम संपन्न' : 'Jobs Completed'} • ₹{completedJobs * 250 || 0} {isHi ? 'सीधे नकद' : 'Direct Cash In Hand'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="badge bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 text-xs">
+            {isHi ? '100% आपकी कमाई (0% कमीशन)' : '100% Kept by Worker (0% Cut)'}
+          </span>
         </div>
       </div>
 
@@ -412,22 +469,64 @@ export default function WorkerDashboard() {
                         : 'Step 1: Arrive at customer premise & enter 4-digit Start OTP'}
                     </span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="text"
                       maxLength={4}
                       placeholder="e.g. 4821"
                       value={startOtpInputs[b.id] || ''}
                       onChange={(e) => setStartOtpInputs({ ...startOtpInputs, [b.id]: e.target.value })}
-                      className="input-field max-w-[140px] text-center font-mono font-bold text-lg py-2"
+                      className="input-field max-w-[130px] text-center font-mono font-bold text-xl py-2 tracking-widest bg-white"
                     />
                     <button
+                      type="button"
+                      onClick={() =>
+                        setActiveKeypad((prev) =>
+                          prev?.id === b.id && prev?.type === 'start' ? null : { id: b.id, type: 'start' }
+                        )
+                      }
+                      className="btn-ghost py-2 px-3 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border-amber-300"
+                    >
+                      {activeKeypad?.id === b.id && activeKeypad?.type === 'start'
+                        ? isHi ? 'पैड छुपाएं' : 'Hide Keypad'
+                        : isHi ? '📱 बड़ा टच पैड' : '📱 Big Touch Pad'}
+                    </button>
+                    <button
                       onClick={() => handleVerifyStartOtp(b)}
-                      className="btn-primary py-2 px-5 text-xs font-bold"
+                      className="btn-primary py-2 px-5 text-xs font-bold shadow-soft"
                     >
                       {isHi ? 'सत्यापित करें व काम शुरू करें' : 'Verify & Start Job'}
                     </button>
                   </div>
+
+                  {/* On-Screen Tactile 0-9 Keypad for field technicians */}
+                  {activeKeypad?.id === b.id && activeKeypad?.type === 'start' && (
+                    <div className="p-3 bg-white rounded-2xl border border-amber-300 shadow-soft max-w-[240px] animate-scale-in">
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map((k) => (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => {
+                              if (k === 'C') setStartOtpInputs((p) => ({ ...p, [b.id]: '' }));
+                              else if (k === '⌫') handleKeypadBackspace(b.id, 'start');
+                              else handleKeypadPress(b.id, 'start', k);
+                            }}
+                            className={`h-11 rounded-xl font-mono text-base font-extrabold shadow-xs active:scale-90 transition-all ${
+                              k === 'C'
+                                ? 'bg-rose-100 text-rose-700'
+                                : k === '⌫'
+                                ? 'bg-slate-200 text-slate-700'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-900'
+                            }`}
+                          >
+                            {k}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {otpErrors[b.id] && (
                     <p className="text-xs font-bold text-rose-600">{otpErrors[b.id]}</p>
                   )}
@@ -462,8 +561,21 @@ export default function WorkerDashboard() {
                       placeholder={isHi ? 'एंड OTP (9134)' : 'End OTP (9134)'}
                       value={endOtpInputs[b.id] || ''}
                       onChange={(e) => setEndOtpInputs({ ...endOtpInputs, [b.id]: e.target.value })}
-                      className="input-field max-w-[140px] text-center font-mono font-bold text-lg py-2"
+                      className="input-field max-w-[130px] text-center font-mono font-bold text-xl py-2 tracking-widest bg-white"
                     />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveKeypad((prev) =>
+                          prev?.id === b.id && prev?.type === 'end' ? null : { id: b.id, type: 'end' }
+                        )
+                      }
+                      className="btn-ghost py-2 px-3 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border-emerald-300"
+                    >
+                      {activeKeypad?.id === b.id && activeKeypad?.type === 'end'
+                        ? isHi ? 'पैड छुपाएं' : 'Hide Keypad'
+                        : isHi ? '📱 बड़ा टच पैड' : '📱 Big Touch Pad'}
+                    </button>
                     <button
                       onClick={() => handleVerifyEndOtp(b)}
                       className="btn bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-5 text-xs font-bold rounded-xl shadow-md"
@@ -471,6 +583,34 @@ export default function WorkerDashboard() {
                       {isHi ? 'काम संपन्न करें व पैसे लें' : 'Complete Job & Collect Cash'}
                     </button>
                   </div>
+
+                  {/* On-Screen Tactile 0-9 Keypad for End OTP */}
+                  {activeKeypad?.id === b.id && activeKeypad?.type === 'end' && (
+                    <div className="p-3 bg-white rounded-2xl border border-emerald-300 shadow-soft max-w-[240px] animate-scale-in">
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map((k) => (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => {
+                              if (k === 'C') setEndOtpInputs((p) => ({ ...p, [b.id]: '' }));
+                              else if (k === '⌫') handleKeypadBackspace(b.id, 'end');
+                              else handleKeypadPress(b.id, 'end', k);
+                            }}
+                            className={`h-11 rounded-xl font-mono text-base font-extrabold shadow-xs active:scale-90 transition-all ${
+                              k === 'C'
+                                ? 'bg-rose-100 text-rose-700'
+                                : k === '⌫'
+                                ? 'bg-slate-200 text-slate-700'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-900'
+                            }`}
+                          >
+                            {k}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {otpErrors[b.id] && (
                     <p className="text-xs font-bold text-rose-600">{otpErrors[b.id]}</p>
                   )}

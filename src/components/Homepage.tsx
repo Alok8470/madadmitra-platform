@@ -110,7 +110,7 @@ export default function Homepage() {
               </p>
 
               {/* Quick Search Bar */}
-              <div className="mt-8 rounded-2xl bg-white p-2 shadow-2xl ring-1 ring-slate-100 max-w-xl">
+              <div className="mt-8 rounded-2xl bg-white p-2 shadow-elevated ring-1 ring-slate-100 max-w-xl">
                 <div className="flex flex-col sm:flex-row items-center gap-2">
                   <div className="relative flex-1 w-full">
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -132,6 +132,30 @@ export default function Homepage() {
                 </div>
               </div>
 
+              {/* Colloquial Hindi Search Prompts */}
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-300">
+                <span className="font-semibold text-amber-300 text-[11px]">💡 अक्सर पूछे जाने वाले:</span>
+                {[
+                  { text: 'नल टपक रहा है (Plumber)', filterKey: 'plumber' },
+                  { text: 'पंखा/लाइट फिटिंग (Electrician)', filterKey: 'electrician' },
+                  { text: 'घर की सफाई (Maid)', filterKey: 'cleaner' },
+                  { text: 'दैनिक खाना (Cook)', filterKey: 'cook' },
+                ].map((chip) => (
+                  <button
+                    key={chip.text}
+                    type="button"
+                    onClick={() => {
+                      setFilter(chip.filterKey as ServiceId);
+                      setQuery('');
+                      handleSearch();
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 text-[11px] font-medium border border-white/15 transition-all"
+                  >
+                    {chip.text}
+                  </button>
+                ))}
+              </div>
+
               {/* Quick Filter Pills */}
               <div className="mt-4 flex flex-wrap gap-2">
                 {QUICK_FILTERS.map((f) => (
@@ -143,7 +167,7 @@ export default function Homepage() {
                     }}
                     className={`pill text-xs ${
                       filter === f.id
-                        ? 'bg-accent-400 text-slate-950 font-bold shadow-soft'
+                        ? 'bg-amber-400 text-slate-950 font-bold shadow-soft'
                         : 'bg-white/10 text-white ring-1 ring-white/15 hover:bg-white/20'
                     }`}
                   >
@@ -322,7 +346,7 @@ export default function Homepage() {
           </span>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5">
           {SERVICES.map((s) => {
             const Icon = s.icon;
             return (
@@ -332,21 +356,40 @@ export default function Homepage() {
                   if (setSelectedCategory) setSelectedCategory(s.id);
                   setView('category');
                 }}
-                className={`group card p-4 text-center transition-all hover:-translate-y-1 hover:shadow-soft ${
-                  selectedCategory === s.id ? 'border-brand-600 ring-2 ring-brand-200 bg-brand-50/30' : ''
+                className={`group card-hover p-5 text-left flex flex-col justify-between transition-all duration-200 ${
+                  selectedCategory === s.id
+                    ? 'border-brand-600 ring-2 ring-brand-200 bg-brand-50/40 shadow-soft'
+                    : 'bg-white hover:border-brand-300'
                 }`}
               >
-                <div
-                  className={`mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br ${s.accent} text-white shadow-soft transition-transform group-hover:scale-105`}
-                >
-                  <Icon className="h-7 w-7" />
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div
+                      className={`grid h-13 w-13 place-items-center rounded-2xl bg-gradient-to-br ${s.accent} text-white shadow-soft transition-transform group-hover:scale-105 p-3`}
+                    >
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">
+                      Live Now
+                    </span>
+                  </div>
+                  <h3 className="mt-3.5 font-display text-base font-extrabold text-slate-900 group-hover:text-brand-700 transition-colors">
+                    {s.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                    {s.description}
+                  </p>
                 </div>
-                <h3 className="mt-3 font-display text-sm font-bold text-slate-900 line-clamp-1">
-                  {s.title}
-                </h3>
-                <p className="mt-1 text-[11px] font-bold text-brand-600">
-                  Starts ₹{s.startingPrice}
-                </p>
+
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Starting Visit</span>
+                    <span className="font-extrabold text-brand-700 text-sm">₹{s.startingPrice}</span>
+                  </div>
+                  <span className="text-xs font-bold text-brand-600 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Book &rarr;
+                  </span>
+                </div>
               </button>
             );
           })}
