@@ -78,7 +78,7 @@ export default function BookingsView() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-10">
+    <div className="mx-auto max-w-4xl px-3 sm:px-6 py-6 sm:py-10 w-full max-w-full overflow-x-hidden">
       {/* Page Title */}
       <div className="flex items-center justify-between">
         <div>

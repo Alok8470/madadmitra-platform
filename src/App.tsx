@@ -55,10 +55,10 @@ function Shell() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
-      <div>
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0 overflow-x-hidden w-full max-w-full">
+      <div className="w-full max-w-full overflow-x-hidden">
         <Header />
-        <main>
+        <main className="w-full max-w-full overflow-x-hidden">
           {view === 'home' && <Homepage />}
 
           <Suspense fallback={<RouteSkeleton />}>
@@ -91,7 +91,7 @@ function Shell() {
         </main>
       </div>
 
-      <footer className="border-t border-slate-100 bg-white mt-12 mb-6 sm:mb-0">
+      <footer className="border-t border-slate-100 bg-white mt-12 mb-6 sm:mb-0 w-full max-w-full overflow-hidden">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 text-center">
           <p className="font-display text-sm font-bold text-slate-700">MadadMitra</p>
           <p className="mt-1 text-xs text-slate-400">

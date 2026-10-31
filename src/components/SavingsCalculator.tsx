@@ -17,9 +17,9 @@ export default function SavingsCalculator() {
   const annualSavings = monthlySavingsVsAggregator * 12;
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-8 shadow-sm">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
-        <div>
+    <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-8 shadow-sm w-full max-w-full overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6 w-full">
+        <div className="w-full">
           <span className="badge bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase px-3 py-1">
             <Sparkles className="h-3 w-3 mr-1" /> Transparent Pricing
           </span>
@@ -33,7 +33,7 @@ export default function SavingsCalculator() {
         </div>
 
         {/* Big Savings Highlight */}
-        <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-4 sm:p-5 text-white shadow-soft shrink-0">
+        <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-4 sm:p-5 text-white shadow-soft shrink-0 w-full lg:w-auto">
           <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-100 flex items-center gap-1">
             <TrendingUp className="h-3.5 w-3.5" /> Estimated Annual Savings
           </p>
@@ -47,7 +47,7 @@ export default function SavingsCalculator() {
       </div>
 
       {/* Slider Control */}
-      <div className="mt-6 sm:mt-8 rounded-2xl bg-slate-50 p-4 sm:p-5 border border-slate-100">
+      <div className="mt-6 sm:mt-8 rounded-2xl bg-slate-50 p-4 sm:p-5 border border-slate-100 w-full max-w-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
           <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
             Select Your Frequency:
@@ -75,7 +75,7 @@ export default function SavingsCalculator() {
       </div>
 
       {/* Comparison Grid */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
         {/* MadadMitra (Winning Card) */}
         <div className="relative rounded-2xl border-2 border-emerald-500 bg-emerald-50/30 p-5 shadow-sm">
           <span className="badge absolute -top-3 right-4 bg-emerald-600 text-white font-extrabold text-[10px] px-2.5 py-0.5 shadow-sm">

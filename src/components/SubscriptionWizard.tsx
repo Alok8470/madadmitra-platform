@@ -314,7 +314,7 @@ export default function SubscriptionWizard({ worker, plan, onClose }: Props) {
   }
 
   return (
-    <div className="pb-28 max-w-2xl mx-auto px-4 sm:px-6 py-6 animate-fade-in">
+    <div className="pb-28 max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       {/* Header & Stepper */}
       <div className="flex items-center gap-4 mb-6">
         <button onClick={handleBack} className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-600">

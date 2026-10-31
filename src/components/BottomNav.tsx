@@ -17,8 +17,8 @@ export default function BottomNav() {
   const isWorkerRole = currentUser?.role === 'worker';
 
   return (
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 px-2 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] touch-manipulation select-none">
-      <div className="flex items-center justify-around text-[10px] font-bold">
+    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 w-full max-w-full bg-white/95 backdrop-blur-lg border-t border-slate-200/90 px-2 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] touch-manipulation select-none">
+      <div className="flex items-center justify-around text-[10px] font-bold w-full max-w-md mx-auto">
         {isWorkerRole ? (
           <>
             {/* Worker: Dashboard */}

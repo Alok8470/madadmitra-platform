@@ -49,7 +49,7 @@ export default function WorkerProfilePage({ worker, onBack }: Props) {
     }
 
     return (
-        <div className="pb-28 max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        <div className="pb-28 max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 w-full max-w-full overflow-x-hidden">
             <button
                 onClick={onBack}
                 className="btn-ghost mb-4 inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
@@ -58,7 +58,7 @@ export default function WorkerProfilePage({ worker, onBack }: Props) {
             </button>
 
             {/* Profile Header */}
-            <div className="card p-6 sm:p-8">
+            <div className="card p-4 sm:p-8">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
                     <div className={`grid h-20 w-20 shrink-0 place-items-center rounded-2xl ${worker.avatarColor} text-white font-bold text-3xl shadow-soft`}>
                         {worker.name.charAt(0)}
@@ -183,7 +183,7 @@ export default function WorkerProfilePage({ worker, onBack }: Props) {
             </div>
 
             {/* Bottom Bar for Daily Booking */}
-            <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl z-40">
+            <div className="fixed bottom-0 left-0 right-0 w-full max-w-full border-t border-slate-200 bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-2xl z-40">
                 <div className="max-w-4xl mx-auto flex items-center justify-between">
                     <div>
                         <p className="text-xs font-semibold text-slate-400">One-time Trial (1 Hour)</p>

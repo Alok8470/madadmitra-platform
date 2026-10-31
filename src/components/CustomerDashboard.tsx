@@ -48,7 +48,7 @@ export default function CustomerDashboard() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-10">
+    <div className="mx-auto max-w-4xl px-3 sm:px-6 py-6 sm:py-10 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-slate-900">Customer Dashboard</h1>

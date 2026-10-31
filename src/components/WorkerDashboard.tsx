@@ -321,7 +321,7 @@ export default function WorkerDashboard() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 animate-fade-in">
+    <div className="mx-auto max-w-4xl px-3 sm:px-6 py-6 sm:py-10 space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       {/* SIKKA LEAD WALLET CARD */}
       <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-brand-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 h-48 w-48 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />

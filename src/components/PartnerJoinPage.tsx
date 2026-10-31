@@ -23,16 +23,16 @@ export default function PartnerJoinPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12 space-y-12">
+    <div className="mx-auto max-w-5xl px-3 sm:px-6 py-6 sm:py-12 space-y-8 sm:space-y-12 w-full max-w-full overflow-x-hidden">
       {/* Top Hero Banner */}
-      <div className="rounded-3xl bg-gradient-to-br from-brand-900 via-brand-800 to-slate-900 text-white p-6 sm:p-12 relative overflow-hidden shadow-2xl">
+      <div className="rounded-3xl bg-gradient-to-br from-brand-900 via-brand-800 to-slate-900 text-white p-4 sm:p-12 relative overflow-hidden shadow-2xl w-full max-w-full">
         <div className="absolute top-0 right-0 h-64 w-64 bg-accent-400/20 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-2xl relative z-10">
           <span className="badge bg-accent-400 text-slate-950 font-black text-xs uppercase px-3 py-1">
             MadadMitra Partner Program
           </span>
-          <h1 className="mt-3 font-display text-3xl sm:text-5xl font-black leading-tight">
+          <h1 className="mt-3 font-display text-2xl sm:text-5xl font-black leading-tight">
             {language === 'hi'
               ? 'मददमित्र से जुड़ें और हर महीने ₹20,000+ कमाएं'
               : 'Join MadadMitra & Earn ₹20,000+ Every Month'}

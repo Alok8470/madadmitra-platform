@@ -22,7 +22,7 @@ export default function WalletPage() {
     const isWorker = currentUser.role === 'worker';
 
     return (
-        <div className="pb-28 max-w-4xl mx-auto px-4 sm:px-6 py-6 animate-fade-in">
+        <div className="pb-28 max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 animate-fade-in w-full max-w-full overflow-x-hidden">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
@@ -30,10 +30,10 @@ export default function WalletPage() {
                         <ArrowLeft className="h-5 w-5" />
                     </button>
                     <div>
-                        <h1 className="font-display text-2xl font-extrabold text-slate-900">
+                        <h1 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900">
                             {isWorker ? 'Lead Sikka & Earnings' : 'Madad Wallet & Suraksha'}
                         </h1>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-xs sm:text-sm text-slate-500">
                             {isWorker ? 'Manage your lead tokens (सिक्के) and direct customer earnings' : 'Manage your warranty escrow, refunds, and booking coins'}
                         </p>
                     </div>
@@ -42,9 +42,9 @@ export default function WalletPage() {
 
             {isWorker ? (
                 // ---------------- WORKER WALLET VIEW (SIKKA TOKEN MODEL) ----------------
-                <div className="space-y-6">
+                <div className="space-y-6 w-full max-w-full">
                     {/* SIKKA TOKENS CARD */}
-                    <div className="card bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">
+                    <div className="card bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 p-4 sm:p-8 text-white relative overflow-hidden shadow-xl w-full max-w-full">
                         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                             <div>
                                 <span className="text-amber-200 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">

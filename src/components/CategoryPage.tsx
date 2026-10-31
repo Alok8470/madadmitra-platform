@@ -146,7 +146,7 @@ export default function CategoryPage() {
   const Icon = categoryData.icon;
 
   return (
-    <div className="pb-44 sm:pb-36 max-w-6xl mx-auto px-3.5 sm:px-6 py-4 sm:py-6 animate-fade-in">
+    <div className="pb-44 sm:pb-36 max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       {/* Header Back & Location */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -162,7 +162,7 @@ export default function CategoryPage() {
 
       {/* Premium Hero Banner */}
       <div
-        className={`rounded-3xl bg-gradient-to-br ${categoryData.accent} p-7 sm:p-10 text-white shadow-elevated relative overflow-hidden mb-6`}
+        className={`rounded-3xl bg-gradient-to-br ${categoryData.accent} p-5 sm:p-10 text-white shadow-elevated relative overflow-hidden mb-6 w-full max-w-full`}
       >
         <div className="absolute -right-8 -top-8 opacity-20 transform rotate-12 pointer-events-none">
           <Icon className="w-56 h-56" />
@@ -180,7 +180,7 @@ export default function CategoryPage() {
               ₹10,000 Madad Suraksha &rarr;
             </button>
           </div>
-          <h1 className="font-display text-2xl sm:text-4xl font-black tracking-tight text-white">
+          <h1 className="font-display text-xl sm:text-4xl font-black tracking-tight text-white">
             {categoryData.title}
           </h1>
           <p className="mt-2 text-white/90 text-xs sm:text-sm leading-relaxed font-medium">
@@ -192,7 +192,7 @@ export default function CategoryPage() {
       </div>
 
       {/* SUB-TABS: Rate Card vs Verified Technicians vs Spare Parts */}
-      <div className="flex border-b border-slate-200 mb-6 gap-2 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
+      <div className="flex border-b border-slate-200 mb-6 gap-2 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x w-full max-w-full">
         <button
           onClick={() => setActiveTab('rate_card')}
           className={`pb-3 px-3 text-xs sm:text-sm font-extrabold whitespace-nowrap flex items-center gap-2 border-b-2 transition-all ${

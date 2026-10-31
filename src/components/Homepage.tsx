@@ -76,9 +76,9 @@ export default function Homepage() {
   };
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10 sm:space-y-12 w-full max-w-full overflow-x-hidden">
       {/* HERO SECTION */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-brand-800 via-brand-700 to-slate-900 text-white">
+      <section className="relative overflow-hidden w-full max-w-full bg-gradient-to-br from-brand-800 via-brand-700 to-slate-900 text-white">
         <div
           className="absolute inset-0 opacity-15"
           style={{
@@ -90,29 +90,29 @@ export default function Homepage() {
         <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-accent-400/20 blur-3xl pointer-events-none" />
         <div className="absolute -left-20 bottom-0 h-80 w-80 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
 
-        <div className="relative mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-16 lg:py-20">
-          <div className="grid items-center gap-10 lg:grid-cols-12">
+        <div className="relative mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-16 lg:py-20 w-full max-w-full">
+          <div className="grid items-center gap-8 lg:gap-10 lg:grid-cols-12">
             {/* Left Content */}
             <div className="lg:col-span-7">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-semibold backdrop-blur-md ring-1 ring-white/20">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-brand-50">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold backdrop-blur-md ring-1 ring-white/20 max-w-full">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="text-brand-50 truncate">
                   {filteredWorkers.length > 0
                     ? `${city}: ${filteredWorkers.length} Verified ${filteredWorkers.length === 1 ? 'Helper' : 'Helpers'} Available Today`
                     : `${city.replace(' (Coming Soon)', '')}: ${city.includes('Coming Soon') ? 'Partner Pre-Registration Active (Launching Soon)' : 'Real-Time KYC Partner Onboarding Active'}`}
                 </span>
               </div>
 
-              <h1 className="mt-4 font-display text-3xl sm:text-5xl font-extrabold leading-[1.12] tracking-tight text-white">
+              <h1 className="mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-[1.15] tracking-tight text-white">
                 {t.tagline}
               </h1>
-              <p className="mt-4 max-w-xl text-base sm:text-lg text-slate-200 leading-relaxed font-normal">
+              <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-lg text-slate-200 leading-relaxed font-normal">
                 {t.subtagline}
               </p>
 
               {/* Quick Search Bar */}
-              <div className="mt-8 rounded-2xl bg-white p-2 shadow-elevated ring-1 ring-slate-100 max-w-xl">
-                <div className="flex flex-col sm:flex-row items-center gap-2">
+              <div className="mt-6 sm:mt-8 rounded-2xl bg-white p-2 shadow-elevated ring-1 ring-slate-100 w-full max-w-xl">
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
                   <div className="relative flex-1 w-full">
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                     <input
@@ -134,8 +134,8 @@ export default function Homepage() {
               </div>
 
               {/* Colloquial Hindi Search Prompts */}
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-300">
-                <span className="font-semibold text-amber-300 text-[11px]">💡 अक्सर पूछे जाने वाले:</span>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-300 w-full max-w-full">
+                <span className="font-semibold text-amber-300 text-[11px] block sm:inline">💡 अक्सर पूछे जाने वाले:</span>
                 {[
                   { text: 'नल टपक रहा है (Plumber)', filterKey: 'plumber' },
                   { text: 'पंखा/लाइट फिटिंग (Electrician)', filterKey: 'electrician' },
@@ -150,7 +150,7 @@ export default function Homepage() {
                       setQuery('');
                       handleSearch();
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 text-[11px] font-medium border border-white/15 transition-all"
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 text-[11px] font-medium border border-white/15 transition-all text-left truncate max-w-full"
                   >
                     {chip.text}
                   </button>
@@ -178,7 +178,7 @@ export default function Homepage() {
               </div>
 
               {/* Quick Action Button */}
-              <div className="mt-5 flex flex-wrap gap-2.5">
+              <div className="mt-5 flex flex-wrap gap-2.5 w-full">
                 <button
                   type="button"
                   onClick={() => setShowSosModal(true)}
@@ -190,15 +190,15 @@ export default function Homepage() {
               </div>
 
               {/* Trust badges */}
-              <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-semibold text-slate-200">
+              <div className="mt-6 sm:mt-7 flex flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-2 text-xs font-semibold text-slate-200">
                 <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" /> Aadhaar & Police Verified
+                  <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" /> Aadhaar & Police Verified
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Zap className="h-4 w-4 text-accent-400" /> Flat ₹10 Platform Fee
+                  <Zap className="h-4 w-4 text-accent-400 shrink-0" /> Flat ₹10 Platform Fee
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-sky-400" /> Same-Day Slot Available
+                  <Clock className="h-4 w-4 text-sky-400 shrink-0" /> Same-Day Slot Available
                 </span>
               </div>
             </div>
@@ -247,10 +247,10 @@ export default function Homepage() {
 
       {/* COMING SOON EXPANSION BANNER */}
       {city.includes('Coming Soon') && (
-        <section className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <section className="mx-auto max-w-6xl px-3 sm:px-6 w-full max-w-full">
+          <div className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
             <div className="flex items-start gap-3">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white font-bold text-xl shadow-sm">
+              <div className="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white font-bold text-lg sm:text-xl shadow-sm">
                 🚀
               </div>
               <div>
@@ -273,8 +273,8 @@ export default function Homepage() {
       )}
 
       {/* SECTION: THE MADADMITRA GUARANTEE */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
+      <section className="mx-auto max-w-6xl px-3 sm:px-6 w-full max-w-full">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-8 shadow-sm">
           <div className="text-center max-w-2xl mx-auto">
             <span className="badge bg-brand-50 text-brand-700 font-bold uppercase text-[10px] tracking-wider px-3 py-1">
               The MadadMitra Guarantee
@@ -332,7 +332,7 @@ export default function Homepage() {
       </section>
 
       {/* SECTION: CATEGORIES GRID */}
-      <section id="categories-section" className="mx-auto max-w-6xl px-4 sm:px-6">
+      <section id="categories-section" className="mx-auto max-w-6xl px-3 sm:px-6 w-full max-w-full">
         <div className="flex items-end justify-between">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-brand-600">
@@ -347,7 +347,7 @@ export default function Homepage() {
           </span>
         </div>
 
-        <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
+        <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5 w-full">
           {SERVICES.map((s) => {
             const Icon = s.icon;
             return (
@@ -357,7 +357,7 @@ export default function Homepage() {
                   if (setSelectedCategory) setSelectedCategory(s.id);
                   setView('category');
                 }}
-                className={`group card-hover p-3.5 sm:p-5 text-left flex flex-col justify-between transition-all duration-200 active:scale-98 ${
+                className={`group card-hover p-3.5 sm:p-5 text-left flex flex-col justify-between transition-all duration-200 active:scale-98 w-full ${
                   selectedCategory === s.id
                     ? 'border-brand-600 ring-2 ring-brand-200 bg-brand-50/40 shadow-soft'
                     : 'bg-white hover:border-brand-300'
@@ -366,11 +366,11 @@ export default function Homepage() {
                 <div>
                   <div className="flex items-start justify-between">
                     <div
-                      className={`grid h-10 w-10 sm:h-13 sm:w-13 place-items-center rounded-xl sm:rounded-2xl bg-gradient-to-br ${s.accent} text-white shadow-soft transition-transform group-hover:scale-105 p-2 sm:p-3`}
+                      className={`grid h-10 w-10 sm:h-13 sm:w-13 place-items-center rounded-xl sm:rounded-2xl bg-gradient-to-br ${s.accent} text-white shadow-soft transition-transform group-hover:scale-105 p-2 sm:p-3 shrink-0`}
                     >
                       <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                     </div>
-                    <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] sm:text-[10px] px-1.5 sm:px-2.5">
+                    <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] sm:text-[10px] px-1.5 sm:px-2.5 shrink-0">
                       Live
                     </span>
                   </div>
@@ -401,12 +401,12 @@ export default function Homepage() {
       <UrbanCompanyComparison />
 
       {/* SAVINGS CALCULATOR (MADADMITRA VS COMPETITION) */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 mt-14">
+      <section className="mx-auto max-w-6xl px-3 sm:px-6 mt-10 sm:mt-14 w-full max-w-full">
         <SavingsCalculator />
       </section>
 
       {/* CUSTOMER REVIEWS & TESTIMONIALS */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 mt-14">
+      <section className="mx-auto max-w-6xl px-3 sm:px-6 mt-10 sm:mt-14 w-full max-w-full">
           <div className="text-center max-w-2xl mx-auto">
             <span className="badge bg-amber-100 text-amber-900 font-extrabold text-xs uppercase px-3 py-1">
               Customer Stories

@@ -143,8 +143,8 @@ export const UrbanCompanyComparison: React.FC = () => {
   };
 
   return (
-    <section className="mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-10">
-      <div className="rounded-3xl border-2 border-slate-200/90 bg-white p-4 sm:p-10 shadow-elevated relative overflow-hidden">
+    <section className="mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-10 w-full max-w-full overflow-hidden">
+      <div className="rounded-3xl border-2 border-slate-200/90 bg-white p-4 sm:p-10 shadow-elevated relative overflow-hidden w-full max-w-full">
         {/* Subtle Ambient Glow */}
         <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
         <div className="absolute -left-20 bottom-0 h-72 w-72 rounded-full bg-brand-500/10 blur-3xl pointer-events-none" />
@@ -170,7 +170,7 @@ export const UrbanCompanyComparison: React.FC = () => {
         </div>
 
         {/* DUAL BENEFIT PILLARS (Customer & Worker Harmony) */}
-        <div className="relative z-10 mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-4xl mx-auto">
+        <div className="relative z-10 mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-4xl mx-auto w-full">
           <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/70 p-3.5 sm:p-5 flex items-start gap-3 shadow-soft">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white font-bold shadow-sm">
               <Users className="h-5 w-5" />
@@ -211,7 +211,7 @@ export const UrbanCompanyComparison: React.FC = () => {
         </div>
 
         {/* DESKTOP COMPARISON TABLE (>=md) */}
-        <div className="relative z-10 mt-8 hidden md:block overflow-hidden rounded-2xl border border-slate-200/90 shadow-soft">
+        <div className="relative z-10 mt-8 hidden md:block overflow-x-auto rounded-2xl border border-slate-200/90 shadow-soft w-full">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 bg-slate-50/80">
@@ -367,7 +367,7 @@ export const UrbanCompanyComparison: React.FC = () => {
         </div>
 
         {/* Bottom Callout & Action Bar (Mobile Touch Optimized) */}
-        <div className="relative z-10 mt-6 sm:mt-8 rounded-2xl bg-gradient-to-r from-slate-900 via-brand-950 to-slate-900 p-4 sm:p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-elevated">
+        <div className="relative z-10 mt-6 sm:mt-8 rounded-2xl bg-gradient-to-r from-slate-900 via-brand-950 to-slate-900 p-4 sm:p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-elevated w-full max-w-full">
           <div className="flex items-start sm:items-center gap-3 max-w-xl">
             <div className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-2xl bg-amber-400 text-slate-950 font-black shadow-soft">
               <Wrench className="h-5 w-5 sm:h-6 sm:w-6" />
