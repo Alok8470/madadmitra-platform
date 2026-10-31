@@ -310,7 +310,9 @@ export default function AuthModal({
         {step === 'form' && (
           <form onSubmit={handleSendOtp} className="mt-3.5 space-y-3 text-left">
             <div>
-              <label className="text-xs font-bold text-slate-700">Full Name (पूरा नाम)</label>
+              <label className="text-xs font-bold text-slate-700">
+                {language === 'hi' ? 'पूरा नाम' : 'Full Name'}
+              </label>
               <div className="relative mt-1">
                 <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
@@ -326,7 +328,7 @@ export default function AuthModal({
 
             <div>
               <label className="text-xs font-bold text-slate-700">
-                10-Digit Mobile Number (मोबाइल नंबर)
+                {language === 'hi' ? '10-अंकों का मोबाइल नंबर' : '10-Digit Mobile Number'}
               </label>
               <div className="relative mt-1 flex">
                 <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600">
@@ -349,7 +351,9 @@ export default function AuthModal({
               <div className="space-y-3 pt-2 border-t border-slate-100">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-700">Work City (काम का शहर)</label>
+                    <label className="text-xs font-bold text-slate-700">
+                      {language === 'hi' ? 'काम का शहर' : 'Work City'}
+                    </label>
                     <select
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
@@ -383,11 +387,11 @@ export default function AuthModal({
                       onChange={(e) => setService(e.target.value as ServiceId)}
                       className="input mt-1 text-xs bg-white"
                     >
-                      <option value="cook">Home Cook (खाना बनाना)</option>
-                      <option value="cleaner">House Cleaner / Maid (झाड़ू-पोछा)</option>
-                      <option value="electrician">Electrician (बिजली मिस्त्री)</option>
-                      <option value="plumber">Plumber (नल फिटिंग)</option>
-                      <option value="all-rounder">All-Rounder (खाना + सफाई)</option>
+                      <option value="cook">{language === 'hi' ? 'रसोइया / कुक' : 'Home Cook'}</option>
+                      <option value="cleaner">{language === 'hi' ? 'सफाईकर्मी / मेड' : 'House Cleaner / Maid'}</option>
+                      <option value="electrician">{language === 'hi' ? 'इलेक्ट्रीशियन' : 'Electrician'}</option>
+                      <option value="plumber">{language === 'hi' ? 'प्लंबर' : 'Plumber'}</option>
+                      <option value="all-rounder">{language === 'hi' ? 'ऑल-राउंडर' : 'All-Rounder'}</option>
                     </select>
                   </div>
                   <div>
@@ -427,7 +431,7 @@ export default function AuthModal({
 
                   <div>
                     <label className="text-[11px] font-bold text-slate-700">
-                      12-Digit Aadhaar Card Number (12 अंकों का आधार नंबर) *
+                      {language === 'hi' ? '12-अंकों का आधार कार्ड नंबर *' : '12-Digit Aadhaar Card Number *'}
                     </label>
                     <input
                       type="text"
@@ -442,7 +446,7 @@ export default function AuthModal({
 
                   <div>
                     <label className="text-[11px] font-bold text-slate-700">
-                      10-Character PAN Card Number (पैन कार्ड नंबर) *
+                      {language === 'hi' ? '10-अक्षरों का पैन कार्ड नंबर *' : '10-Character PAN Card Number *'}
                     </label>
                     <input
                       type="text"
@@ -491,7 +495,7 @@ export default function AuthModal({
                 <>
                   <span>
                     {role === 'worker' && workerMode === 'signup'
-                      ? 'Submit KYC & Verify OTP (पंजीकरण करें)'
+                      ? (language === 'hi' ? 'केवाईसी जमा करें और ओटीपी सत्यापित करें' : 'Submit KYC & Verify OTP')
                       : language === 'hi'
                       ? 'OTP प्राप्त करें'
                       : 'Get Verification Code'}

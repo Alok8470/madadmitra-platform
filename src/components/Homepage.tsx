@@ -27,7 +27,8 @@ const QUICK_FILTERS: { id: ServiceId | 'all'; label: string }[] = [
 
 export default function Homepage() {
   const { workers, city, setView, catalogMode, openAuthModal, setSelectedCategory, selectedCategory } = useApp();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isHi = language === 'hi';
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceId | 'all'>('all');
   const [showSosModal, setShowSosModal] = useState(false);
@@ -91,19 +92,19 @@ export default function Homepage() {
         <div className="absolute left-0 bottom-0 h-48 sm:h-80 w-48 sm:w-80 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
 
         <div className="relative mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-16 lg:py-20 w-full max-w-full">
-          <div className="grid items-center gap-8 lg:gap-10 lg:grid-cols-12">
+          <div className="grid items-center gap-8 lg:gap-10 lg:grid-cols-12 min-w-0 w-full">
             {/* Left Content */}
-            <div className="lg:col-span-7">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold backdrop-blur-md ring-1 ring-white/20 max-w-full">
+            <div className="lg:col-span-7 min-w-0 w-full overflow-hidden">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold backdrop-blur-md ring-1 ring-white/20 max-w-full min-w-0">
                 <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span className="text-brand-50 truncate">
+                <span className="text-brand-50 truncate min-w-0">
                   {filteredWorkers.length > 0
                     ? `${city}: ${filteredWorkers.length} Verified ${filteredWorkers.length === 1 ? 'Helper' : 'Helpers'} Available Today`
                     : `${city.replace(' (Coming Soon)', '')}: ${city.includes('Coming Soon') ? 'Partner Pre-Registration Active (Launching Soon)' : 'Real-Time KYC Partner Onboarding Active'}`}
                 </span>
               </div>
 
-              <h1 className="mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-[1.15] tracking-tight text-white">
+              <h1 className="mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-[1.15] tracking-tight text-white break-words">
                 {t.tagline}
               </h1>
               <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-lg text-slate-200 leading-relaxed font-normal">
@@ -111,9 +112,9 @@ export default function Homepage() {
               </p>
 
               {/* Quick Search Bar */}
-              <div className="mt-6 sm:mt-8 rounded-2xl bg-white p-2 shadow-elevated ring-1 ring-slate-100 w-full max-w-xl">
-                <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-                  <div className="relative flex-1 w-full">
+              <div className="mt-6 sm:mt-8 rounded-2xl bg-white p-2 shadow-elevated ring-1 ring-slate-100 w-full max-w-xl min-w-0">
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full min-w-0">
+                  <div className="relative flex-1 w-full min-w-0">
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                     <input
                       value={query}
@@ -125,7 +126,7 @@ export default function Homepage() {
                   </div>
                   <button
                     onClick={handleSearch}
-                    className="btn-primary w-full sm:w-auto px-6 py-3 text-sm font-bold shadow-soft rounded-xl"
+                    className="btn-primary w-full sm:w-auto px-6 py-3 text-sm font-bold shadow-soft rounded-xl shrink-0"
                   >
                     <Search className="h-4 w-4" />
                     {t.searchBtn}
@@ -133,15 +134,25 @@ export default function Homepage() {
                 </div>
               </div>
 
-              {/* Colloquial Hindi Search Prompts */}
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-300 w-full max-w-full">
-                <span className="font-semibold text-amber-300 text-[11px] block sm:inline">💡 अक्सर पूछे जाने वाले:</span>
-                {[
-                  { text: 'नल टपक रहा है (Plumber)', filterKey: 'plumber' },
-                  { text: 'पंखा/लाइट फिटिंग (Electrician)', filterKey: 'electrician' },
-                  { text: 'घर की सफाई (Maid)', filterKey: 'cleaner' },
-                  { text: 'दैनिक खाना (Cook)', filterKey: 'cook' },
-                ].map((chip) => (
+              {/* Frequently Asked Search Prompts */}
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-300 w-full min-w-0">
+                <span className="font-semibold text-amber-300 text-[11px] block sm:inline shrink-0">
+                  {isHi ? '💡 अक्सर पूछे जाने वाले:' : '💡 Frequently Asked:'}
+                </span>
+                {(isHi
+                  ? [
+                      { text: 'नल टपक रहा है (Plumber)', filterKey: 'plumber' },
+                      { text: 'पंखा/लाइट फिटिंग (Electrician)', filterKey: 'electrician' },
+                      { text: 'घर की सफाई (Maid)', filterKey: 'cleaner' },
+                      { text: 'दैनिक खाना (Cook)', filterKey: 'cook' },
+                    ]
+                  : [
+                      { text: 'Leaking Tap (Plumber)', filterKey: 'plumber' },
+                      { text: 'Fan & Light Fitting (Electrician)', filterKey: 'electrician' },
+                      { text: 'House Cleaning (Maid)', filterKey: 'cleaner' },
+                      { text: 'Daily Cooking (Cook)', filterKey: 'cook' },
+                    ]
+                ).map((chip) => (
                   <button
                     key={chip.text}
                     type="button"
@@ -150,7 +161,7 @@ export default function Homepage() {
                       setQuery('');
                       handleSearch();
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 text-[11px] font-medium border border-white/15 transition-all text-left truncate max-w-full"
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 text-[11px] font-medium border border-white/15 transition-all text-left max-w-full break-words"
                   >
                     {chip.text}
                   </button>
@@ -158,7 +169,7 @@ export default function Homepage() {
               </div>
 
               {/* Quick Filter Pills */}
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2 w-full min-w-0">
                 {QUICK_FILTERS.map((f) => (
                   <button
                     key={f.id}
@@ -178,14 +189,14 @@ export default function Homepage() {
               </div>
 
               {/* Quick Action Button */}
-              <div className="mt-5 flex flex-wrap gap-2.5 w-full">
+              <div className="mt-5 flex flex-wrap gap-2.5 w-full min-w-0">
                 <button
                   type="button"
                   onClick={() => setShowSosModal(true)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 text-slate-950 font-black px-4 py-3 sm:py-2.5 text-xs shadow-lg hover:bg-amber-300 transition-all active:scale-95 min-h-[44px]"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 text-slate-950 font-black px-4 py-3 sm:py-2.5 text-xs shadow-lg hover:bg-amber-300 transition-all active:scale-95 min-h-[44px] max-w-full text-center"
                 >
                   <Zap className="h-4 w-4 fill-slate-950 animate-bounce shrink-0" />
-                  <span>🚨 Urgent 30-Min Dispatch (Emergency Helper)</span>
+                  <span className="break-words">🚨 Urgent 30-Min Dispatch (Emergency Helper)</span>
                 </button>
               </div>
 
