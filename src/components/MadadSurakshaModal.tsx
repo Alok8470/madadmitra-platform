@@ -36,7 +36,7 @@ export const MadadSurakshaModal: React.FC<Props> = ({ open, onClose }) => {
           </h2>
           <p className="text-xs text-slate-500 mt-1">
             {isHi
-              ? 'अर्बन कंपनी से 3 गुना बेहतर व पारदर्शी घरेलू सुरक्षा'
+              ? 'पारंपरिक एग्रीगेटर्स से कहीं अधिक पारदर्शी व विश्वसनीय घरेलू सुरक्षा'
               : 'Enterprise-grade protection with local neighborhood accountability'}
           </p>
         </div>
@@ -100,8 +100,8 @@ export const MadadSurakshaModal: React.FC<Props> = ({ open, onClose }) => {
           </p>
           <p className="mt-1 text-[11px] text-emerald-800 leading-relaxed">
             {isHi
-              ? 'अर्बन कंपनी कारीगर की कमाई से 25-30% कमीशन काटती है जिससे कारीगर असंतुष्ट रहते हैं। मदद मित्र पर 100% मजदूरी कारीगर की है, जिससे वे पूरे समर्पण से काम करते हैं।'
-              : 'Unlike Urban Company taking 25-30% cuts from worker wages, MadadMitra gives 100% cash to technicians. Happy, respected local partners deliver superior craftsmanship.'}
+              ? 'पारंपरिक एग्रीगेटर ऐप्स कारीगर की कमाई से 25-30% कमीशन काटते हैं। मदद मित्र पर 100% मजदूरी कारीगर की है, जिससे वे पूरे समर्पण से काम करते हैं।'
+              : 'Unlike traditional aggregator platforms taking 25-30% cuts from worker wages, MadadMitra gives 100% cash to technicians. Happy, respected local partners deliver superior craftsmanship.'}
           </p>
         </div>
 

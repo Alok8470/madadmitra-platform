@@ -332,7 +332,7 @@ export default function Homepage() {
       </section>
 
       {/* SECTION: CATEGORIES GRID */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6">
+      <section id="categories-section" className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex items-end justify-between">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-brand-600">
