@@ -1,13 +1,24 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   Search,
   Star,
   BadgeCheck,
   ShieldCheck,
   Clock,
-  ThumbsUp,
-  Award,
   Zap,
+  ChevronLeft,
+  ChevronRight,
+  ChefHat,
+  Sparkles,
+  Wrench,
+  Users,
+  UserPlus,
+  Hammer,
+  Paintbrush,
+  MapPin,
+  AlertCircle,
+  ArrowRight,
+  Tag,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -16,52 +27,109 @@ import SavingsCalculator from './SavingsCalculator';
 import SOSBookingModal from './SOSBookingModal';
 import UrbanCompanyComparison from './UrbanCompanyComparison';
 
-const QUICK_FILTERS: { id: ServiceId | 'all'; label: string }[] = [
-  { id: 'all', label: 'All Services' },
-  { id: 'cook', label: 'Cook' },
-  { id: 'cleaner', label: 'Maid & Cleaning' },
-  { id: 'electrician', label: 'Electrician' },
-  { id: 'plumber', label: 'Plumber' },
-  { id: 'all-rounder', label: 'All-Rounder' },
+// ─── Offer Banner Data ────────────────────────────────────────────────────────
+const OFFER_BANNERS = [
+  {
+    id: 'b1',
+    bg: 'from-violet-600 via-purple-600 to-indigo-700',
+    icon: '🎉',
+    label: 'LAUNCH OFFER',
+    title: 'First Booking Free Platform Fee',
+    subtitle: 'Use code MADAD0 — Limited period offer for Deoria households',
+    cta: 'Book Now',
+    accent: 'bg-white/20',
+    textAccent: 'text-white',
+    blob1: 'bg-white/10',
+    blob2: 'bg-purple-400/20',
+  },
+  {
+    id: 'b2',
+    bg: 'from-emerald-600 via-teal-600 to-cyan-700',
+    icon: '👨‍🍳',
+    label: 'DAILY MEAL PLAN',
+    title: 'Monthly Cook Package at ₹3,499',
+    subtitle: '25 visits/month — fresh North Indian meals, zero commission to your cook',
+    cta: 'View Plans',
+    accent: 'bg-white/20',
+    textAccent: 'text-white',
+    blob1: 'bg-emerald-400/20',
+    blob2: 'bg-white/10',
+  },
+  {
+    id: 'b3',
+    bg: 'from-amber-500 via-orange-500 to-rose-500',
+    icon: '⚡',
+    label: 'EMERGENCY',
+    title: '30-Min Urgent Helper Dispatch',
+    subtitle: 'Electrician · Plumber · Maid — All within 30 minutes. 24 × 7 in Deoria',
+    cta: 'Call Now',
+    accent: 'bg-white/20',
+    textAccent: 'text-white',
+    blob1: 'bg-amber-400/20',
+    blob2: 'bg-white/10',
+  },
+  {
+    id: 'b4',
+    bg: 'from-brand-700 via-brand-600 to-sky-700',
+    icon: '🛡️',
+    label: 'VERIFIED PARTNERS',
+    title: '0% Commission to Your Helper',
+    subtitle: 'Workers keep 100% of their pay — no hidden cuts, no loan traps ever',
+    cta: 'Join as Partner',
+    accent: 'bg-white/20',
+    textAccent: 'text-white',
+    blob1: 'bg-brand-400/20',
+    blob2: 'bg-sky-400/10',
+  },
+];
+
+// ─── Service Category Data (icon-first grid cards) ────────────────────────────
+const CATEGORY_GRID = [
+  { id: 'cook',        icon: ChefHat,     label: 'Cook / Chef',       price: '₹250',  bg: 'bg-orange-50',    iconBg: 'from-orange-400 to-amber-500',   glow: 'rgba(249,115,22,0.30)' },
+  { id: 'cleaner',     icon: Sparkles,    label: 'Maid & Cleaning',   price: '₹200',  bg: 'bg-sky-50',       iconBg: 'from-sky-400 to-blue-500',       glow: 'rgba(14,165,233,0.30)' },
+  { id: 'electrician', icon: Zap,         label: 'Electrician',       price: '₹150',  bg: 'bg-yellow-50',    iconBg: 'from-amber-400 to-yellow-500',   glow: 'rgba(245,158,11,0.30)' },
+  { id: 'plumber',     icon: Wrench,      label: 'Plumber',           price: '₹180',  bg: 'bg-blue-50',      iconBg: 'from-blue-500 to-indigo-600',    glow: 'rgba(59,130,246,0.30)' },
+  { id: 'carpenter',   icon: Hammer,      label: 'Carpenter',         price: '₹180',  bg: 'bg-amber-50',     iconBg: 'from-amber-700 to-yellow-800',   glow: 'rgba(180,83,9,0.25)' },
+  { id: 'painter',     icon: Paintbrush,  label: 'Painter',           price: '₹200',  bg: 'bg-rose-50',      iconBg: 'from-rose-400 to-red-500',       glow: 'rgba(239,68,68,0.25)' },
+  { id: 'all-rounder', icon: Users,       label: 'All-Rounder',       price: '₹400',  bg: 'bg-emerald-50',   iconBg: 'from-emerald-500 to-teal-600',   glow: 'rgba(16,185,129,0.30)' },
+  { id: 'tag-team',    icon: UserPlus,    label: 'Tag-Team Combo',    price: '₹650',  bg: 'bg-violet-50',    iconBg: 'from-violet-500 to-purple-600',  glow: 'rgba(139,92,246,0.30)' },
+];
+
+// ─── Trust Stats Strip ────────────────────────────────────────────────────────
+const TRUST_STATS = [
+  { icon: ShieldCheck, value: '100%',   label: 'Aadhaar Verified', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { icon: Star,        value: '4.85★',  label: 'Avg Rating',       color: 'text-amber-600',   bg: 'bg-amber-50' },
+  { icon: Clock,       value: '<30min', label: 'Avg Response',     color: 'text-sky-600',     bg: 'bg-sky-50' },
+  { icon: Tag,         value: '₹10',    label: 'Flat Fee Only',    color: 'text-brand-600',   bg: 'bg-brand-50' },
 ];
 
 export default function Homepage() {
   const { workers, city, setView, catalogMode, openAuthModal, setSelectedCategory, selectedCategory } = useApp();
-  const { t, language } = useLanguage();
+  const { t: _t, language } = useLanguage();
   const isHi = language === 'hi';
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceId | 'all'>('all');
   const [showSosModal, setShowSosModal] = useState(false);
+  const [bannerIdx, setBannerIdx] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Filter workers by current selected CITY/AREA, active online status, category, search query, and catalogMode
+  // ── Filtered workers ──────────────────────────────────────────────────────
   const filteredWorkers = useMemo(() => {
     return workers.filter((w) => {
-      // In production mode (verified_only), only show real KYC partners who signed up
-      if (catalogMode === 'verified_only' && !w.isRealPartner && !w.id.startsWith('w_live_')) {
-        return false;
-      }
+      if (catalogMode === 'verified_only' && !w.isRealPartner && !w.id.startsWith('w_live_')) return false;
       if (!w.online) return false;
-
-      const selectedLower = city.toLowerCase();
-      const workerCityLower = (w.city || 'deoria').toLowerCase();
-      const workerAreaLower = (w.area || '').toLowerCase();
-
+      const sel = city.toLowerCase();
+      const wCity = (w.city || 'deoria').toLowerCase();
+      const wArea = (w.area || '').toLowerCase();
       let matchCity = true;
-      if (selectedLower.includes('all deoria') || selectedLower === 'deoria') {
-        // "Deoria (All Areas)" matches any worker in Deoria or its sub-areas
-        matchCity = workerCityLower.includes('deoria') || workerAreaLower.length > 0;
-      } else if (!selectedLower.includes('coming soon')) {
-        // Specific Deoria locality selected (e.g. Raghav Nagar, Salempur)
-        matchCity =
-          workerAreaLower.includes(selectedLower) ||
-          selectedLower.includes(workerAreaLower) ||
-          workerCityLower.includes(selectedLower);
+      if (sel.includes('all deoria') || sel === 'deoria') {
+        matchCity = wCity.includes('deoria') || wArea.length > 0;
+      } else if (!sel.includes('coming soon')) {
+        matchCity = wArea.includes(sel) || sel.includes(wArea) || wCity.includes(sel);
       } else {
-        // Coming soon city selected
-        const cleanComingSoon = selectedLower.replace(' (coming soon)', '').trim();
-        matchCity = workerCityLower.includes(cleanComingSoon);
+        matchCity = wCity.includes(sel.replace(' (coming soon)', '').trim());
       }
-
       const matchService = filter === 'all' || w.service === filter;
       const matchQuery =
         !query ||
@@ -72,235 +140,319 @@ export default function Homepage() {
     });
   }, [workers, city, filter, query, catalogMode]);
 
-  const handleSearch = () => {
+  const handleSearch = () =>
     document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+
+  // ── Carousel auto-advance ─────────────────────────────────────────────────
+  const scrollTo = useCallback((idx: number) => {
+    const next = (idx + OFFER_BANNERS.length) % OFFER_BANNERS.length;
+    setBannerIdx(next);
+    if (carouselRef.current) {
+      const child = carouselRef.current.children[next] as HTMLElement;
+      child?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    }
+  }, []);
+
+  useEffect(() => {
+    autoRef.current = setInterval(() => scrollTo(bannerIdx + 1), 4000);
+    return () => { if (autoRef.current) clearInterval(autoRef.current); };
+  }, [bannerIdx, scrollTo]);
+
+  const liveCount = filteredWorkers.length;
+  const availText = liveCount > 0
+    ? `${liveCount} Verified Helper${liveCount === 1 ? '' : 's'} Available Now in ${city.replace(' (Coming Soon)', '')}`
+    : `KYC Partner Onboarding Active — ${city.replace(' (Coming Soon)', '')}`;
+
+  // ── SUGGESTED SEARCH CHIPS ─────────────────────────────────────────────────
+  const CHIPS = isHi
+    ? [
+        { text: 'नल टपक रहा है', filterKey: 'plumber' },
+        { text: 'पंखा / लाइट फिटिंग', filterKey: 'electrician' },
+        { text: 'घर की सफाई', filterKey: 'cleaner' },
+        { text: 'दैनिक खाना', filterKey: 'cook' },
+      ]
+    : [
+        { text: 'Leaking Tap', filterKey: 'plumber' },
+        { text: 'Fan & Light Fitting', filterKey: 'electrician' },
+        { text: 'House Cleaning', filterKey: 'cleaner' },
+        { text: 'Daily Cooking', filterKey: 'cook' },
+      ];
 
   return (
-    <div className="space-y-10 sm:space-y-12 w-full max-w-full overflow-x-hidden">
-      {/* HERO SECTION */}
-      <section className="relative overflow-hidden w-full max-w-full bg-gradient-to-br from-brand-800 via-brand-700 to-slate-900 text-white">
+    <div className="w-full max-w-full overflow-x-hidden bg-slate-50 pb-6">
+
+      {/* ════════════════════════ HERO ════════════════════════ */}
+      <section className="relative w-full max-w-full bg-gradient-to-br from-brand-800 via-brand-700 to-indigo-900 text-white hero-clip overflow-hidden" style={{ contain: 'paint' }}>
+        {/* Dot-grid texture */}
         <div
-          className="absolute inset-0 opacity-15"
+          className="absolute inset-0 opacity-[0.08] pointer-events-none"
           style={{
-            backgroundImage:
-              'radial-gradient(circle at 20% 20%, white 1.5px, transparent 1.5px)',
-            backgroundSize: '28px 28px',
+            backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
           }}
         />
-        <div className="absolute right-0 top-0 h-48 sm:h-80 w-48 sm:w-80 rounded-full bg-accent-400/20 blur-3xl pointer-events-none" />
-        <div className="absolute left-0 bottom-0 h-48 sm:h-80 w-48 sm:w-80 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
+        {/* Ambient blobs — contained so they don't overflow */}
+        <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute -left-12 bottom-0 h-56 w-56 rounded-full bg-sky-400/15 blur-3xl pointer-events-none" />
 
-        <div className="relative mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-16 lg:py-20 w-full max-w-full">
-          <div className="grid items-center gap-8 lg:gap-10 lg:grid-cols-12 min-w-0 w-full">
-            {/* Left Content */}
-            <div className="lg:col-span-7 min-w-0 w-full overflow-hidden">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold backdrop-blur-md ring-1 ring-white/20 max-w-full min-w-0">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span className="text-brand-50 truncate min-w-0">
-                  {filteredWorkers.length > 0
-                    ? `${city}: ${filteredWorkers.length} Verified ${filteredWorkers.length === 1 ? 'Helper' : 'Helpers'} Available Today`
-                    : `${city.replace(' (Coming Soon)', '')}: ${city.includes('Coming Soon') ? 'Partner Pre-Registration Active (Launching Soon)' : 'Real-Time KYC Partner Onboarding Active'}`}
-                </span>
-              </div>
+        <div className="relative mx-auto max-w-6xl px-4 pt-6 pb-8 sm:pt-10 sm:pb-12 w-full min-w-0">
 
-              <h1 className="mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-[1.15] tracking-tight text-white break-words">
-                {t.tagline}
-              </h1>
-              <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-lg text-slate-200 leading-relaxed font-normal">
-                {t.subtagline}
-              </p>
+          {/* ── Live Status Pill ── */}
+          <div className="flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-1.5 text-[11px] sm:text-xs font-semibold w-fit max-w-full min-w-0 mb-4 overflow-hidden">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="truncate min-w-0 text-white/90">{availText}</span>
+          </div>
 
-              {/* Quick Search Bar */}
-              <div className="mt-6 sm:mt-8 rounded-2xl bg-white p-2 shadow-elevated ring-1 ring-slate-100 w-full max-w-xl min-w-0">
-                <div className="flex flex-col sm:flex-row items-center gap-2 w-full min-w-0">
-                  <div className="relative flex-1 w-full min-w-0">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                    <input
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                      placeholder={t.searchPlaceholder}
-                      className="w-full rounded-xl border-0 bg-transparent py-3 pl-11 pr-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none"
-                    />
-                  </div>
-                  <button
-                    onClick={handleSearch}
-                    className="btn-primary w-full sm:w-auto px-6 py-3 text-sm font-bold shadow-soft rounded-xl shrink-0"
-                  >
-                    <Search className="h-4 w-4" />
-                    {t.searchBtn}
-                  </button>
-                </div>
-              </div>
+          {/* ── Hero Heading ── */}
+          <h1 className="font-display text-[1.65rem] sm:text-4xl lg:text-5xl font-black leading-[1.12] tracking-tight text-white text-balance pr-2">
+            {isHi ? 'घर के लिए भरोसेमंद\nमददगार खोजें' : 'Find Trusted Helpers\nfor Your Home'}
+          </h1>
+          <p className="mt-2.5 text-sm sm:text-base text-white/75 leading-relaxed max-w-sm sm:max-w-md font-normal pr-2">
+            {isHi
+              ? 'सत्यापित रसोइया, सफाईकर्मी, इलेक्ट्रीशियन — केवल ₹10 शुल्क'
+              : 'Verified cooks, cleaners, electricians & more — just ₹10 fee, 0% helper commission'}
+          </p>
 
-              {/* Frequently Asked Search Prompts */}
-              <div className="mt-4 sm:mt-5 w-full min-w-0">
-                <div className="flex items-center gap-1.5 mb-2.5">
-                  <span className="text-[11px] sm:text-xs font-bold text-amber-300 tracking-wide flex items-center gap-1.5">
-                    💡 {isHi ? 'अक्सर पूछे जाने वाले सुझाव:' : 'Frequently Asked Searches:'}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2 w-full min-w-0">
-                  {(isHi
-                    ? [
-                        { text: 'नल टपक रहा है (Plumber)', filterKey: 'plumber' },
-                        { text: 'पंखा/लाइट फिटिंग (Electrician)', filterKey: 'electrician' },
-                        { text: 'घर की सफाई (Maid)', filterKey: 'cleaner' },
-                        { text: 'दैनिक खाना (Cook)', filterKey: 'cook' },
-                      ]
-                    : [
-                        { text: 'Leaking Tap (Plumber)', filterKey: 'plumber' },
-                        { text: 'Fan & Light Fitting (Electrician)', filterKey: 'electrician' },
-                        { text: 'House Cleaning (Maid)', filterKey: 'cleaner' },
-                        { text: 'Daily Cooking (Cook)', filterKey: 'cook' },
-                      ]
-                  ).map((chip) => (
-                    <button
-                      key={chip.text}
-                      type="button"
-                      onClick={() => {
-                        setFilter(chip.filterKey as ServiceId);
-                        setQuery('');
-                        handleSearch();
-                      }}
-                      className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-100 text-xs font-medium border border-white/15 transition-all text-left max-w-full break-words shadow-xs backdrop-blur-sm"
-                    >
-                      {chip.text}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quick Filter Categories */}
-              <div className="mt-5 sm:mt-6 w-full min-w-0">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-300/90">
-                    {isHi ? 'सेवा श्रेणी चुनें' : 'Browse by Category'}
-                  </span>
-                  {filter !== 'all' && (
-                    <button
-                      onClick={() => {
-                        setFilter('all');
-                        handleSearch();
-                      }}
-                      className="text-[11px] font-bold text-amber-300 hover:text-amber-200 transition-colors"
-                    >
-                      {isHi ? 'सभी देखें (Reset)' : 'View All (Reset)'}
-                    </button>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2 sm:gap-2.5 w-full min-w-0">
-                  {QUICK_FILTERS.map((f) => {
-                    const isActive = filter === f.id;
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => {
-                          setFilter(f.id);
-                          handleSearch();
-                        }}
-                        className={`inline-flex items-center justify-center px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xs ${
-                          isActive
-                            ? 'bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300/60 scale-[1.02]'
-                            : 'bg-white/10 text-white border border-white/20 hover:bg-white/20 backdrop-blur-sm'
-                        }`}
-                      >
-                        {f.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Quick Action Button */}
-              <div className="mt-6 sm:mt-7 w-full min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setShowSosModal(true)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-2xl bg-amber-400 text-slate-950 font-black px-4 py-3.5 sm:py-3 text-xs sm:text-sm shadow-lg hover:bg-amber-300 transition-all active:scale-95 min-h-[48px] max-w-full text-center"
-                >
-                  <Zap className="h-4 w-4 fill-slate-950 animate-bounce shrink-0" />
-                  <span className="break-words">🚨 Urgent 30-Min Dispatch (Emergency Helper)</span>
-                </button>
-              </div>
-
-              {/* Trust badges */}
-              <div className="mt-6 sm:mt-7 flex flex-wrap items-center gap-x-5 gap-y-2.5 text-xs font-semibold text-slate-200">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" /> Aadhaar & Police Verified
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Zap className="h-4 w-4 text-accent-400 shrink-0" /> Flat ₹10 Platform Fee
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-sky-400 shrink-0" /> Same-Day Slot Available
-                </span>
-              </div>
+          {/* ── Search Card ── */}
+          <div className="mt-5 sm:mt-7 rounded-2xl bg-white p-2.5 shadow-2xl ring-1 ring-slate-200/60 w-full max-w-lg min-w-0">
+            {/* Location Row */}
+            <div className="flex items-center gap-2 px-1 mb-2">
+              <MapPin className="h-3.5 w-3.5 text-brand-500 shrink-0" />
+              <span className="text-[11px] font-semibold text-slate-500 truncate min-w-0">
+                {city.replace(' (Coming Soon)', '')}
+              </span>
+              <span className="ml-auto text-[10px] font-bold text-emerald-600 flex items-center gap-1 shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                {isHi ? 'लाइव सेवा' : 'Live Service'}
+              </span>
             </div>
 
-            {/* Right Hero Image & Metric Cards */}
-            <div className="lg:col-span-5 relative hidden lg:block">
-              <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/15 bg-slate-800">
-                <img
-                  src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=700&q=80"
-                  alt="Verified household helper"
-                  className="h-full w-full object-cover"
+            {/* Search Input Row */}
+            <div className="flex gap-2 min-w-0">
+              <div className="relative flex-1 min-w-0">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder={isHi ? 'रसोइया, सफाईकर्मी, इलेक्ट्रीशियन...' : 'Search cook, maid, electrician...'}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition min-w-0"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+              </div>
+              <button
+                onClick={handleSearch}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white px-4 py-3 text-sm font-bold shadow-md transition-all"
+              >
+                <Search className="h-4 w-4" />
+                <span className="hidden xs:inline">{isHi ? 'खोजें' : 'Search'}</span>
+              </button>
+            </div>
 
-                {/* Floating Metric Card 1 */}
-                <div className="absolute top-4 left-4 rounded-2xl bg-white/95 backdrop-blur-md p-3 text-slate-900 shadow-xl flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
-                    <ShieldCheck className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Quality Standard
-                    </p>
-                    <p className="text-xs font-extrabold text-slate-900">100% Verified Helpers</p>
-                  </div>
-                </div>
+            {/* Suggested Chips */}
+            <div className="mt-2.5 flex flex-wrap gap-1.5 min-w-0">
+              <span className="text-[10px] font-bold text-slate-400 self-center shrink-0">
+                {isHi ? 'सुझाव:' : 'Try:'}
+              </span>
+              {CHIPS.map((chip) => (
+                <button
+                  key={chip.text}
+                  type="button"
+                  onClick={() => { setFilter(chip.filterKey as ServiceId); setQuery(''); handleSearch(); }}
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 active:scale-95 text-slate-600 text-[11px] font-medium border border-slate-200 hover:border-brand-200 transition-all break-words"
+                >
+                  {chip.text}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                {/* Floating Metric Card 2 */}
-                <div className="absolute bottom-4 left-4 right-4 rounded-2xl bg-white/95 backdrop-blur-md p-3.5 text-slate-900 shadow-xl flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
-                    <div>
-                      <p className="text-xs font-extrabold text-slate-900">4.85 / 5.0 Rating</p>
-                      <p className="text-[10px] text-slate-400">Across 2,400+ household visits</p>
+          {/* ── SOS CTA Strip ── */}
+          <div className="mt-5 flex flex-wrap gap-3 items-center min-w-0">
+            <button
+              type="button"
+              onClick={() => setShowSosModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black px-4 py-2.5 text-xs sm:text-sm shadow-lg transition-all min-h-[44px] max-w-full"
+            >
+              <Zap className="h-4 w-4 fill-slate-950 animate-bounce shrink-0" />
+              <span className="leading-tight">{isHi ? '🚨 30 मिनट — अर्जेंट बुकिंग' : '🚨 30-Min Emergency Booking'}</span>
+            </button>
+
+            {/* Trust micro-badges */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] font-semibold text-white/70">
+              <span className="flex items-center gap-1 shrink-0"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />{isHi ? 'आधार सत्यापित' : 'Aadhaar Verified'}</span>
+              <span className="flex items-center gap-1 shrink-0"><Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400 shrink-0" />{isHi ? '4.85★ रेटिंग' : '4.85★ Rated'}</span>
+              <span className="flex items-center gap-1 shrink-0"><Zap className="h-3.5 w-3.5 text-sky-400 shrink-0" />{isHi ? '₹10 शुल्क' : '₹10 Fee'}</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ════════════════ OFFER BANNER CAROUSEL ════════════════ */}
+      <section className="mx-auto max-w-6xl px-4 mt-5 w-full min-w-0 overflow-hidden">
+        <div className="relative min-w-0 overflow-hidden">
+          {/* Slides */}
+          <div
+            ref={carouselRef}
+            className="flex overflow-x-auto no-scrollbar rounded-2xl min-w-0"
+            style={{ scrollSnapType: 'x mandatory', gap: 0 }}
+          >
+            {OFFER_BANNERS.map((b, i) => (
+              <div
+                key={b.id}
+                style={{ scrollSnapAlign: 'start', minWidth: '100%', maxWidth: '100%' }}
+                className={`relative flex-shrink-0 w-full rounded-2xl bg-gradient-to-r ${b.bg} p-4 sm:p-5 overflow-hidden cursor-pointer select-none`}
+                onClick={() => scrollTo(i + 1)}
+              >
+                {/* Decorative blobs inside slide */}
+                <div className={`absolute right-0 top-0 h-32 w-32 rounded-full ${b.blob1} blur-2xl pointer-events-none`} />
+                <div className={`absolute -left-8 bottom-0 h-24 w-24 rounded-full ${b.blob2} blur-2xl pointer-events-none`} />
+
+                <div className="relative z-10 flex items-center justify-between gap-3 min-w-0">
+                  <div className="min-w-0">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black tracking-widest text-white uppercase mb-2">
+                      <span>{b.icon}</span>
+                      <span>{b.label}</span>
                     </div>
+                    <h3 className="font-display font-black text-white text-sm sm:text-lg leading-tight break-words">
+                      {b.title}
+                    </h3>
+                    <p className="mt-1 text-[11px] sm:text-xs text-white/80 leading-relaxed max-w-xs">
+                      {b.subtitle}
+                    </p>
+                    <button className="mt-3 inline-flex items-center gap-1 rounded-xl bg-white text-slate-900 font-bold text-xs px-3.5 py-2 shadow-sm hover:scale-105 active:scale-95 transition-transform">
+                      {b.cta} <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                  <span className="badge bg-brand-50 text-brand-700 border border-brand-200">
-                    Trusted
-                  </span>
+                  <div className="text-4xl sm:text-5xl shrink-0 opacity-90">{b.icon}</div>
                 </div>
               </div>
-            </div>
+            ))}
+          </div>
+
+          {/* Prev / Next Arrows */}
+          <button
+            onClick={() => scrollTo(bannerIdx - 1)}
+            className="absolute left-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center hover:bg-white transition-all"
+          >
+            <ChevronLeft className="h-4 w-4 text-slate-700" />
+          </button>
+          <button
+            onClick={() => scrollTo(bannerIdx + 1)}
+            className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center hover:bg-white transition-all"
+          >
+            <ChevronRight className="h-4 w-4 text-slate-700" />
+          </button>
+
+          {/* Dot Indicators */}
+          <div className="flex items-center justify-center gap-1.5 mt-3">
+            {OFFER_BANNERS.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => scrollTo(i)}
+                className={`rounded-full transition-all ${i === bannerIdx ? 'w-5 h-1.5 bg-brand-600' : 'w-1.5 h-1.5 bg-slate-300'}`}
+              />
+            ))}
           </div>
         </div>
       </section>
 
-      {/* COMING SOON EXPANSION BANNER */}
+      {/* ════════════════ TRUST STATS STRIP ════════════════ */}
+      <section className="mx-auto max-w-6xl px-4 mt-5 w-full min-w-0">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+          {TRUST_STATS.map((s) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} className={`${s.bg} rounded-xl sm:rounded-2xl p-2 sm:p-3.5 flex flex-col items-center text-center`}>
+                <Icon className={`h-3.5 w-3.5 sm:h-5 sm:w-5 ${s.color} mb-1`} />
+                <span className={`font-black text-[11px] sm:text-base ${s.color} leading-none`}>{s.value}</span>
+                <span className="text-[8px] sm:text-[10px] font-semibold text-slate-500 mt-0.5 leading-tight">{s.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ════════════════ SERVICE CATEGORIES GRID ════════════════ */}
+      <section className="mx-auto max-w-6xl px-4 mt-7 w-full min-w-0">
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-brand-600">
+              {isHi ? 'सेवाएं' : 'Our Services'}
+            </span>
+            <h2 className="mt-0.5 font-display text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">
+              {isHi ? 'घरेलू सेवाएं चुनें' : 'What do you need today?'}
+            </h2>
+          </div>
+          <button
+            onClick={() => { setFilter('all'); handleSearch(); }}
+            className="text-xs font-bold text-brand-600 hover:text-brand-700 inline-flex items-center gap-0.5 shrink-0"
+          >
+            {isHi ? 'सभी देखें' : 'See all'} <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-2.5 sm:gap-3.5 w-full">
+          {CATEGORY_GRID.map((cat) => {
+            const Icon = cat.icon;
+            const isActive = filter === cat.id || selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => {
+                  setFilter(cat.id as ServiceId);
+                  if (setSelectedCategory) setSelectedCategory(cat.id as ServiceId);
+                  setView('category');
+                }}
+                className={`group flex flex-col items-center gap-2 p-3 sm:p-4 rounded-2xl border transition-all duration-200 active:scale-95 text-center w-full ${
+                  isActive
+                    ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200 shadow-md'
+                    : 'border-slate-200/80 bg-white hover:border-brand-200 hover:shadow-md hover:-translate-y-0.5'
+                }`}
+              >
+                {/* Icon */}
+                <div
+                  className={`grid h-12 w-12 sm:h-14 sm:w-14 place-items-center rounded-2xl bg-gradient-to-br ${cat.iconBg} text-white transition-transform group-hover:scale-110 group-active:scale-95 shadow-md`}
+                  style={{ boxShadow: `0 8px 20px -4px ${cat.glow}` }}
+                >
+                  <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+
+                {/* Label */}
+                <div className="min-w-0 w-full">
+                  <p className={`text-[10px] sm:text-xs font-extrabold leading-snug break-words ${isActive ? 'text-brand-700' : 'text-slate-800 group-hover:text-brand-700'} transition-colors`}>
+                    {cat.label}
+                  </p>
+                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-0.5">
+                    from {cat.price}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ════════════════ COMING SOON BANNER ════════════════ */}
       {city.includes('Coming Soon') && (
-        <section className="mx-auto max-w-6xl px-3 sm:px-6 w-full max-w-full">
-          <div className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <section className="mx-auto max-w-6xl px-4 mt-7 w-full min-w-0">
+          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
             <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white font-bold text-lg sm:text-xl shadow-sm">
+              <div className="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white text-xl shadow-sm">
                 🚀
               </div>
               <div>
-                <h3 className="font-display font-bold text-amber-950 text-base sm:text-lg">
-                  MadadMitra is Expanding: Launching Soon in {city.replace(' (Coming Soon)', '')}!
+                <h3 className="font-display font-bold text-amber-950 text-sm sm:text-base">
+                  MadadMitra Launching in {city.replace(' (Coming Soon)', '')}
                 </h3>
-                <p className="mt-1 text-xs sm:text-sm text-amber-800 leading-relaxed max-w-2xl">
-                  We are actively establishing our verified helper network across Eastern Uttar Pradesh. We are currently accepting <strong>pre-registrations for service partners</strong> (Cooks, Maids, Electricians, Plumbers). Full household services are currently live across <strong>Deoria</strong> and its surrounding tehsils.
+                <p className="mt-1 text-xs sm:text-sm text-amber-800 leading-relaxed max-w-xl">
+                  Partner pre-registrations now open. Full service live across <strong>Deoria</strong>.
                 </p>
               </div>
             </div>
             <button
               onClick={() => openAuthModal('worker', 'signup')}
-              className="btn-primary py-3 px-5 text-xs font-bold whitespace-nowrap self-start sm:self-auto shrink-0 shadow-soft"
+              className="btn-primary py-2.5 px-4 text-xs font-bold whitespace-nowrap self-start sm:self-auto shrink-0 shadow-soft rounded-xl"
             >
               Pre-Register as Partner
             </button>
@@ -308,84 +460,66 @@ export default function Homepage() {
         </section>
       )}
 
-      {/* SECTION: THE MADADMITRA GUARANTEE */}
-      <section className="mx-auto max-w-6xl px-3 sm:px-6 w-full max-w-full">
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-8 shadow-sm">
-          <div className="text-center max-w-2xl mx-auto">
-            <span className="badge bg-brand-50 text-brand-700 font-bold uppercase text-[10px] tracking-wider px-3 py-1">
-              The MadadMitra Guarantee
-            </span>
-            <h2 className="mt-2 font-display text-2xl sm:text-3xl font-extrabold text-slate-900">
-              Why Customers Love MadadMitra Over Agencies
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Five-star verified helper quality at transparent local rates with a flat ₹10 platform fee.
-            </p>
-          </div>
+      {/* ════════════════ GUARANTEE CARDS ════════════════ */}
+      <section className="mx-auto max-w-6xl px-4 mt-8 w-full min-w-0">
+        <div className="text-center mb-5">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-brand-700 mb-2">
+            <ShieldCheck className="h-3.5 w-3.5" /> {isHi ? 'मदद मित्र गारंटी' : 'The MadadMitra Guarantee'}
+          </span>
+          <h2 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900">
+            {isHi ? 'हर बार सेवा में बेहतरीन' : 'Quality Guaranteed on Every Visit'}
+          </h2>
+        </div>
 
-          <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-5">
-              <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl bg-brand-100 text-brand-700 font-bold">
-                <BadgeCheck className="h-4 w-4 sm:h-5 sm:w-5" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { icon: BadgeCheck, color: 'text-brand-600', bg: 'bg-brand-50', title: isHi ? 'सत्यापित पृष्ठभूमि' : 'Verified Background', desc: isHi ? 'सरकारी ID + पड़ोस रेफरेंस' : 'Govt ID + locality refs checked' },
+            { icon: Zap,        color: 'text-amber-600', bg: 'bg-amber-50',  title: isHi ? 'सिर्फ ₹10 शुल्क' : 'Flat ₹10 Fee',        desc: isHi ? 'कोई मंहगी सदस्यता नहीं' : 'No expensive subscriptions ever' },
+            { icon: AlertCircle,color: 'text-emerald-600',bg:'bg-emerald-50',title: isHi ? 'अनुपस्थिति गारंटी' : 'Absence Guarantee',  desc: isHi ? 'बदल या रिफंड — तुरंत' : 'Instant backup or full refund' },
+            { icon: ShieldCheck,color: 'text-sky-600',  bg: 'bg-sky-50',    title: isHi ? 'OTP के बाद भुगतान' : 'Pay After Service',   desc: isHi ? 'OTP सत्यापन पर ही भुगतान' : 'Pay only after OTP verification' },
+          ].map((g) => {
+            const Icon = g.icon;
+            return (
+              <div key={g.title} className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md transition-shadow">
+                <div className={`${g.bg} h-10 w-10 rounded-xl grid place-items-center mb-3`}>
+                  <Icon className={`h-5 w-5 ${g.color}`} />
+                </div>
+                <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug">{g.title}</h3>
+                <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 leading-relaxed">{g.desc}</p>
               </div>
-              <h3 className="mt-2.5 font-bold text-slate-900 text-xs sm:text-sm">Verified Background</h3>
-              <p className="mt-1 text-[11px] sm:text-xs text-slate-500 leading-relaxed">
-                Govt. ID checked & locality references verified before onboarding.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-5">
-              <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl bg-amber-100 text-amber-700 font-bold">
-                <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <h3 className="mt-2.5 font-bold text-slate-900 text-xs sm:text-sm">Flat ₹10 Platform Fee</h3>
-              <p className="mt-1 text-[11px] sm:text-xs text-slate-500 leading-relaxed">
-                No high commission cuts from helpers, no expensive club memberships.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-5">
-              <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700 font-bold">
-                <Award className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <h3 className="mt-2.5 font-bold text-slate-900 text-xs sm:text-sm">Absence Guarantee</h3>
-              <p className="mt-1 text-[11px] sm:text-xs text-slate-500 leading-relaxed">
-                If your regular cook/maid takes unexpected leave, get instant backup or refund.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-5">
-              <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl bg-purple-100 text-purple-700 font-bold">
-                <ThumbsUp className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <h3 className="mt-2.5 font-bold text-slate-900 text-xs sm:text-sm">Pay After Service</h3>
-              <p className="mt-1 text-[11px] sm:text-xs text-slate-500 leading-relaxed">
-                Secure payment with service verification OTP on arrival.
-              </p>
-            </div>
-          </div>
+            );
+          })}
         </div>
       </section>
 
-      {/* SECTION: CATEGORIES GRID */}
-      <section id="categories-section" className="mx-auto max-w-6xl px-3 sm:px-6 w-full max-w-full">
-        <div className="flex items-end justify-between">
+      {/* ════════════════ FULL SERVICE CATALOG (original card grid) ════════════════ */}
+      <section id="results" className="mx-auto max-w-6xl px-4 mt-8 w-full min-w-0">
+        <div className="flex items-end justify-between mb-4">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-brand-600">
-              Categories
+            <span className="text-[10px] font-black uppercase tracking-widest text-brand-600">
+              {isHi ? 'सभी सेवाएं' : 'All Services'}
             </span>
-            <h2 className="mt-1 font-display text-xl sm:text-2xl font-extrabold text-slate-900">
-              Select Household Service
+            <h2 className="mt-0.5 font-display text-xl sm:text-2xl font-extrabold text-slate-900">
+              {isHi ? 'पूरी सेवा सूची' : 'Complete Service Catalog'}
             </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {isHi ? `${city} में सेवा उपलब्ध` : `Live in ${city}`}
+            </p>
           </div>
-          <span className="text-xs font-semibold text-slate-400 hidden sm:inline">
-            Serving all residential localities in {city}
-          </span>
+          {filter !== 'all' && (
+            <button
+              onClick={() => setFilter('all')}
+              className="text-xs font-bold text-rose-500 hover:text-rose-600 inline-flex items-center gap-0.5 shrink-0"
+            >
+              Clear filter
+            </button>
+          )}
         </div>
 
-        <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
           {SERVICES.map((s) => {
             const Icon = s.icon;
+            const isActive = selectedCategory === s.id;
             return (
               <button
                 key={s.id}
@@ -393,38 +527,35 @@ export default function Homepage() {
                   if (setSelectedCategory) setSelectedCategory(s.id);
                   setView('category');
                 }}
-                className={`group card-hover p-3.5 sm:p-5 text-left flex flex-col justify-between transition-all duration-200 active:scale-98 w-full ${
-                  selectedCategory === s.id
-                    ? 'border-brand-600 ring-2 ring-brand-200 bg-brand-50/40 shadow-soft'
-                    : 'bg-white hover:border-brand-300'
+                className={`group card-hover p-4 sm:p-5 text-left flex flex-col justify-between transition-all duration-200 active:scale-[0.97] w-full rounded-2xl border ${
+                  isActive
+                    ? 'border-brand-500 ring-2 ring-brand-200 bg-brand-50/30 shadow-soft'
+                    : 'border-slate-200/80 bg-white hover:border-brand-300'
                 }`}
               >
                 <div>
                   <div className="flex items-start justify-between">
-                    <div
-                      className={`grid h-10 w-10 sm:h-13 sm:w-13 place-items-center rounded-xl sm:rounded-2xl bg-gradient-to-br ${s.accent} text-white shadow-soft transition-transform group-hover:scale-105 p-2 sm:p-3 shrink-0`}
-                    >
+                    <div className={`grid h-11 w-11 sm:h-13 sm:w-13 place-items-center rounded-2xl bg-gradient-to-br ${s.accent} text-white shadow-soft transition-transform group-hover:scale-105 group-hover:-rotate-2 p-2.5 shrink-0`}>
                       <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                     </div>
-                    <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] sm:text-[10px] px-1.5 sm:px-2.5 shrink-0">
+                    <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] sm:text-[10px] px-2">
                       Live
                     </span>
                   </div>
-                  <h3 className="mt-2.5 sm:mt-3.5 font-display text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-brand-700 transition-colors leading-snug">
+                  <h3 className="mt-3 font-display text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-brand-700 transition-colors leading-snug">
                     {s.title}
                   </h3>
-                  <p className="mt-1 text-[11px] sm:text-xs text-slate-500 line-clamp-1 sm:line-clamp-2 leading-relaxed">
+                  <p className="mt-1 text-[11px] sm:text-xs text-slate-500 line-clamp-2 leading-relaxed">
                     {s.description}
                   </p>
                 </div>
-
-                <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
                   <div>
-                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block">Visit</span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block">From</span>
                     <span className="font-extrabold text-brand-700 text-xs sm:text-sm">₹{s.startingPrice}</span>
                   </div>
                   <span className="text-[11px] sm:text-xs font-bold text-brand-600 group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5">
-                    Book &rarr;
+                    Book →
                   </span>
                 </div>
               </button>
@@ -433,65 +564,66 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* FACTUAL TEARDOWN: MADADMITRA VS URBAN COMPANY */}
+      {/* ════════════════ COMPARISON ════════════════ */}
       <UrbanCompanyComparison />
 
-      {/* SAVINGS CALCULATOR (MADADMITRA VS COMPETITION) */}
-      <section className="mx-auto max-w-6xl px-3 sm:px-6 mt-10 sm:mt-14 w-full max-w-full">
+      {/* ════════════════ SAVINGS CALCULATOR ════════════════ */}
+      <section className="mx-auto max-w-6xl px-4 mt-8 w-full min-w-0">
         <SavingsCalculator />
       </section>
 
-      {/* CUSTOMER REVIEWS & TESTIMONIALS */}
-      <section className="mx-auto max-w-6xl px-3 sm:px-6 mt-10 sm:mt-14 w-full max-w-full">
-          <div className="text-center max-w-2xl mx-auto">
-            <span className="badge bg-amber-100 text-amber-900 font-extrabold text-xs uppercase px-3 py-1">
-              Customer Stories
-            </span>
-            <h2 className="mt-2 font-display text-2xl sm:text-3xl font-extrabold text-slate-900">
-              Trusted by Families in Deoria & Eastern UP
-            </h2>
-            <p className="mt-1 text-xs sm:text-sm text-slate-500">
-              Read how households across Raghav Nagar, Civil Lines, Bhatpar Rani, and Salempur rely on MadadMitra daily.
-            </p>
-          </div>
+      {/* ════════════════ TESTIMONIALS ════════════════ */}
+      <section className="mx-auto max-w-6xl px-4 mt-8 w-full min-w-0">
+        <div className="text-center mb-6">
+          <span className="badge bg-amber-100 text-amber-900 font-extrabold text-[10px] uppercase px-3 py-1 mb-2">
+            {isHi ? 'ग्राहक कहानियां' : 'Customer Stories'}
+          </span>
+          <h2 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
+            {isHi ? 'देवरिया व पूर्वी UP के परिवार' : 'Trusted by Families Across Eastern UP'}
+          </h2>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
+            {isHi
+              ? 'राघव नगर, सिविल लाइंस, बहतपार रानी और सलेमपुर से समीक्षाएं'
+              : 'Reviews from Raghav Nagar, Civil Lines, Bhatpar Rani & Salempur'}
+          </p>
+        </div>
 
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.id} className="card p-5 flex flex-col justify-between border border-slate-200/80 hover:shadow-card transition-all">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-amber-500">
-                      {[...Array(t.rating)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
-                      ))}
-                    </div>
-                    <span className="text-[10px] font-semibold text-slate-400">{t.date}</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {TESTIMONIALS.map((t) => (
+            <div key={t.id} className="card p-5 flex flex-col justify-between border border-slate-200/80 hover:shadow-card transition-all rounded-2xl">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-0.5 text-amber-500">
+                    {[...Array(t.rating)].map((_, i) => (
+                      <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    ))}
                   </div>
-
-                  <p className="mt-3 text-xs text-slate-600 leading-relaxed italic">
-                    "{t.text}"
+                  <span className="text-[10px] font-semibold text-slate-400">{t.date}</span>
+                </div>
+                <p className="mt-3 text-xs text-slate-600 leading-relaxed italic">
+                  "{t.text}"
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-full bg-brand-100 text-brand-700 font-black text-sm grid place-items-center shrink-0">
+                  {t.author.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-bold text-slate-900 text-xs flex items-center gap-1">
+                    {t.author}
+                    {t.verifiedCustomer && <BadgeCheck className="h-3.5 w-3.5 text-brand-600" />}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    {t.locality}, {t.city} • <span className="font-semibold text-brand-700">{t.serviceType}</span>
                   </p>
                 </div>
-
-                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-slate-900 text-xs flex items-center gap-1">
-                      {t.author}
-                      {t.verifiedCustomer && (
-                        <BadgeCheck className="h-3.5 w-3.5 text-brand-600" />
-                      )}
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      {t.locality}, {t.city} • <span className="font-semibold text-brand-700">{t.serviceType}</span>
-                    </p>
-                  </div>
-                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
+        </div>
       </section>
 
-      {/* SOS EMERGENCY BOOKING MODAL */}
+      {/* ════════════════ SOS MODAL ════════════════ */}
       {showSosModal && (
         <SOSBookingModal
           open={showSosModal}
