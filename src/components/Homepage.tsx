@@ -5,15 +5,13 @@ import {
   BadgeCheck,
   ShieldCheck,
   Clock,
-  ArrowRight,
-  MapPin,
   ThumbsUp,
   Award,
   Zap,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
-import { SERVICES, SERVICE_LABELS, TESTIMONIALS, type ServiceId, type Worker } from '../data/mockData';
+import { SERVICES, SERVICE_LABELS, TESTIMONIALS, type ServiceId } from '../data/mockData';
 import SavingsCalculator from './SavingsCalculator';
 import SOSBookingModal from './SOSBookingModal';
 
@@ -27,7 +25,7 @@ const QUICK_FILTERS: { id: ServiceId | 'all'; label: string }[] = [
 ];
 
 export default function Homepage() {
-  const { workers, city, setView, setSelectedWorker, catalogMode, openAuthModal } = useApp();
+  const { workers, city, setView, catalogMode, openAuthModal, setSelectedCategory, selectedCategory } = useApp();
   const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceId | 'all'>('all');
@@ -74,14 +72,6 @@ export default function Homepage() {
 
   const handleSearch = () => {
     document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const handleViewProfile = (worker: Worker) => {
-    if (setSelectedWorker) {
-      setSelectedWorker(worker);
-    }
-    setView('worker-profile');
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
   return (
@@ -335,16 +325,15 @@ export default function Homepage() {
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           {SERVICES.map((s) => {
             const Icon = s.icon;
-            const active = filter === s.id;
             return (
               <button
                 key={s.id}
                 onClick={() => {
-                  setFilter(s.id);
-                  document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
+                  if (setSelectedCategory) setSelectedCategory(s.id);
+                  setView('category');
                 }}
                 className={`group card p-4 text-center transition-all hover:-translate-y-1 hover:shadow-soft ${
-                  active ? 'border-brand-600 ring-2 ring-brand-200 bg-brand-50/30' : ''
+                  selectedCategory === s.id ? 'border-brand-600 ring-2 ring-brand-200 bg-brand-50/30' : ''
                 }`}
               >
                 <div
@@ -364,169 +353,13 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* SECTION: RESULTS LIST (Available helpers in selected City) */}
-      <section id="results" className="mx-auto max-w-6xl px-4 sm:px-6 scroll-mt-20">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-display text-2xl font-extrabold text-slate-900">
-                Verified Helpers in {city}
-              </h2>
-              <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-bold text-brand-700">
-                {filteredWorkers.length} Available
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Available for same-day booking or regular monthly contracts
-            </p>
-          </div>
+      {/* SAVINGS CALCULATOR (MADADMITRA VS COMPETITION) */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 mt-14">
+        <SavingsCalculator />
+      </section>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">Filter:</span>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as ServiceId | 'all')}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none"
-            >
-              <option value="all">All Categories</option>
-              <option value="cook">Cook</option>
-              <option value="cleaner">House Cleaner / Maid</option>
-              <option value="electrician">Electrician</option>
-              <option value="plumber">Plumber</option>
-              <option value="all-rounder">All-Rounder</option>
-              <option value="tag-team">Tag-Team Combo</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Empty State */}
-        {filteredWorkers.length === 0 ? (
-          <div className="card mt-6 p-8 sm:p-12 text-center border-2 border-dashed border-slate-200 bg-slate-50/50">
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-brand-50 text-brand-600 shadow-soft">
-              <ShieldCheck className="h-8 w-8" />
-            </div>
-            <h3 className="mt-4 font-display text-xl sm:text-2xl font-extrabold text-slate-900">
-              {city.includes('Coming Soon')
-                ? `Launching Soon in ${city.replace(' (Coming Soon)', '')}`
-                : `No registered partners in ${city} yet`}
-            </h3>
-            <p className="mt-2 text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
-              {city.includes('Coming Soon')
-                ? `MadadMitra is expanding to ${city.replace(' (Coming Soon)', '')} soon! Currently servicing Deoria and surrounding localities. Are you a skilled service provider in ${city.replace(' (Coming Soon)', '')}? Pre-register as a partner today.`
-                : `We do not show sample or unverified profiles. Real helpers appear here only after full government KYC verification (Aadhaar & PAN). Are you a skilled Cook, Maid, Electrician, or Plumber in ${city}? Partner with MadadMitra today and keep 100% of your earnings!`}
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <button
-                onClick={() => openAuthModal('worker', 'signup')}
-                className="btn-primary text-xs sm:text-sm font-bold flex items-center gap-2 py-2.5 px-5 shadow-soft"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                <span>Worker KYC Registration (Aadhaar & PAN)</span>
-              </button>
-              {(filter !== 'all' || query) && (
-                <button
-                  onClick={() => {
-                    setFilter('all');
-                    setQuery('');
-                  }}
-                  className="btn-secondary text-xs sm:text-sm font-bold py-2.5 px-4"
-                >
-                  Reset Filters
-                </button>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredWorkers.map((w) => (
-              <div
-                key={w.id}
-                onClick={() => handleViewProfile(w)}
-                className="card p-5 hover:shadow-card transition-all cursor-pointer border border-slate-200/80 hover:border-brand-400 flex flex-col justify-between group"
-              >
-                <div>
-                  {/* Top card row */}
-                  <div className="flex items-start gap-3.5">
-                    <div
-                      className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${w.avatarColor} text-white font-extrabold text-xl shadow-soft`}
-                    >
-                      {w.name.charAt(0)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1">
-                        <h3 className="truncate font-bold text-slate-900 text-base group-hover:text-brand-600 transition-colors">
-                          {w.name}
-                        </h3>
-                        {w.verified && (
-                          <BadgeCheck className="h-4 w-4 shrink-0 text-brand-600" />
-                        )}
-                      </div>
-                      <p className="text-xs font-semibold text-brand-700">
-                        {SERVICE_LABELS[w.service]}
-                      </p>
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-                        <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate">
-                          {w.area}, {w.city || city}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Rating & stats strip */}
-                  <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-2.5 text-xs">
-                    <span className="flex items-center gap-1 font-bold text-amber-600">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                      {w.rating}
-                      <span className="font-normal text-slate-400">({w.jobs} jobs)</span>
-                    </span>
-                    <span className="font-semibold text-slate-600">
-                      {w.experienceYears ? `${w.experienceYears}+ Yrs Exp` : 'Verified Pro'}
-                    </span>
-                    <span className="badge bg-emerald-100 text-emerald-800 text-[10px]">
-                      Aadhaar Verified
-                    </span>
-                  </div>
-
-                  {/* About snippet */}
-                  {w.about && (
-                    <p className="mt-3 text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                      "{w.about}"
-                    </p>
-                  )}
-                </div>
-
-                {/* Card footer with pricing & CTA */}
-                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase text-slate-400">Rate</p>
-                    <p className="font-display text-lg font-extrabold text-slate-900">
-                      ₹{w.pricePerVisit}
-                      <span className="text-xs font-normal text-slate-400"> / visit</span>
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewProfile(w);
-                    }}
-                    className="btn-primary py-2 px-4 text-xs font-bold shadow-sm group-hover:bg-brand-700"
-                  >
-                    Book Now <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* SAVINGS CALCULATOR (MADADMITRA VS COMPETITION) */}
-        <div className="mt-14">
-          <SavingsCalculator />
-        </div>
-
-        {/* CUSTOMER REVIEWS & TESTIMONIALS */}
-        <div className="mt-14">
+      {/* CUSTOMER REVIEWS & TESTIMONIALS */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 mt-14">
           <div className="text-center max-w-2xl mx-auto">
             <span className="badge bg-amber-100 text-amber-900 font-extrabold text-xs uppercase px-3 py-1">
               Customer Stories
@@ -573,31 +406,6 @@ export default function Homepage() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* CUSTOMER DASHBOARD CONTRACT BANNER */}
-        <div className="mt-14 card overflow-hidden bg-gradient-to-r from-slate-900 via-brand-900 to-slate-950 p-6 sm:p-8 text-white shadow-xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="max-w-xl">
-              <span className="badge bg-accent-400 text-slate-950 font-bold text-xs uppercase px-2.5 py-1">
-                Absence Guarantee
-              </span>
-              <h3 className="mt-2 font-display text-xl sm:text-2xl font-bold">
-                Maid or Cook on Leave Today?
-              </h3>
-              <p className="mt-1 text-sm text-slate-300 leading-relaxed">
-                If you have an active monthly contract, get a 1-day replacement helper summoned
-                to your doorstep in 45 minutes or receive an instant ₹80 refund.
-              </p>
-            </div>
-            <button
-              onClick={() => setView('customer')}
-              className="btn-accent px-6 py-3 font-bold text-sm shrink-0 shadow-lg"
-            >
-              Open Customer Contract <ArrowRight className="h-4 w-4 ml-1" />
-            </button>
-          </div>
-        </div>
       </section>
 
       {/* SOS EMERGENCY BOOKING MODAL */}

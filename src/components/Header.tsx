@@ -12,28 +12,22 @@ import {
   Briefcase,
   Check,
   Sparkles,
+  Wallet,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { DEORIA_AREAS, COMING_SOON_CITIES } from '../data/mockData';
-import AuthModal from './AuthModal';
-import type { UserProfile, UserRole } from '../types';
+import type { UserRole } from '../types';
 
 export default function Header() {
   const {
     city,
     setCity,
-    cities,
     view,
     setView,
     currentUser,
-    setCurrentUser,
     logout,
-    authModalOpen,
-    authModalRole,
-    authModalWorkerMode,
     openAuthModal,
-    closeAuthModal,
   } = useApp();
   const { language, toggleLanguage, t } = useLanguage();
 
@@ -60,26 +54,18 @@ export default function Header() {
     openAuthModal(role, mode);
   };
 
-  const handleLoginSuccess = (profile: UserProfile) => {
-    setCurrentUser(profile);
-    if (profile.role === 'worker') {
-      setView('worker');
-    } else if (profile.role === 'admin') {
-      setView('admin');
-    }
-  };
 
   const navBtn = (label: string, active: boolean, onClick: () => void, icon: React.ReactNode) => (
     <button
       onClick={onClick}
-      className={`btn px-3 py-2 text-xs sm:text-sm transition-all ${
+      className={`hidden sm:inline-flex btn px-3 py-2 text-xs sm:text-sm transition-all ${
         active
           ? 'bg-brand-50 text-brand-700 border border-brand-200'
           : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
       }`}
     >
       {icon}
-      <span className="hidden md:inline">{label}</span>
+      <span>{label}</span>
     </button>
   );
 
@@ -131,7 +117,7 @@ export default function Header() {
               {cityOpen && (
                 <div className="absolute right-0 mt-2 w-72 max-h-80 overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl animate-scale-in origin-top-right z-50 p-2">
                   <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 rounded-xl flex items-center justify-between">
-                    <span>📍 Deoria (देवरिया) • Live Areas</span>
+                    <span>{language === 'hi' ? '📍 देवरिया • सक्रिय क्षेत्र' : '📍 Deoria • Live Service Areas'}</span>
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
                   <div className="mt-1 space-y-0.5">
@@ -161,7 +147,7 @@ export default function Header() {
 
                   <div className="mt-2.5 pt-2 border-t border-slate-100">
                     <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-50 rounded-xl flex items-center justify-between">
-                      <span>🚀 Upcoming Hubs (जल्द आ रहे हैं)</span>
+                      <span>{language === 'hi' ? '🚀 आगामी शहर' : '🚀 Upcoming Hubs'}</span>
                       <Sparkles className="h-3 w-3 text-amber-600" />
                     </div>
                     <div className="mt-1 space-y-0.5">
@@ -199,17 +185,11 @@ export default function Header() {
             {/* Navigation Buttons */}
             {navBtn(t.myBookings, view === 'bookings', () => setView('bookings'), <CalendarCheck className="h-4 w-4" />)}
 
-            {/* Worker Portal Button */}
-            {navBtn(
-              t.workerLogin,
-              view === 'worker',
-              () => {
-                if (currentUser?.role === 'worker') {
-                  setView('worker');
-                } else {
-                  openAuth('worker');
-                }
-              },
+            {/* Partner / Worker Button (Only for Logged Out users) */}
+            {!currentUser && navBtn(
+              "Partner with Us",
+              view === 'partner-join',
+              () => setView('partner-join'),
               <Briefcase className="h-4 w-4" />
             )}
 
@@ -226,33 +206,91 @@ export default function Header() {
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-2xl border border-slate-100 bg-white p-1.5 shadow-card animate-scale-in origin-top-right z-50">
+                  <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-100 bg-white p-1.5 shadow-card animate-scale-in origin-top-right z-50">
                     <div className="px-3 py-2 border-b border-slate-100">
                       <p className="text-xs font-bold text-slate-900 truncate">{currentUser.fullName}</p>
                       <p className="text-[11px] text-slate-400 capitalize">{currentUser.role} Account</p>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        setView('bookings');
-                        setUserMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <CalendarCheck className="h-3.5 w-3.5" />
-                      <span>{t.myBookings}</span>
-                    </button>
+                    {/* Customer Mode Links */}
+                    {view !== 'worker' && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setView('bookings');
+                            setUserMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          <CalendarCheck className="h-3.5 w-3.5" />
+                          <span>{t.myBookings}</span>
+                        </button>
 
-                    <button
-                      onClick={() => {
-                        setView('customer');
-                        setUserMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <Handshake className="h-3.5 w-3.5" />
-                      <span>{t.customerDashboard}</span>
-                    </button>
+                        <button
+                          onClick={() => {
+                            setView('customer');
+                            setUserMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          <Handshake className="h-3.5 w-3.5" />
+                          <span>{t.customerDashboard}</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            setView('wallet');
+                            setUserMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                          <span>My Wallet</span>
+                        </button>
+                      </>
+                    )}
+
+                    {/* Worker Mode Switcher */}
+                    {currentUser.role === 'worker' && (
+                      <div className="my-1">
+                        {view === 'worker' ? (
+                          <button
+                            onClick={() => {
+                              setView('home');
+                              setUserMenuOpen(false);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-xl bg-brand-50 px-3 py-2.5 text-xs font-bold text-brand-700 hover:bg-brand-100 border border-brand-100 transition-colors"
+                          >
+                            <Handshake className="h-3.5 w-3.5" />
+                            <span>Switch to Customer Mode</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setView('worker');
+                              setUserMenuOpen(false);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 border border-emerald-100 transition-colors"
+                          >
+                            <Briefcase className="h-3.5 w-3.5" />
+                            <span>Switch to Partner Mode</span>
+                          </button>
+                        )}
+                        
+                        {view === 'worker' && (
+                          <button
+                            onClick={() => {
+                              setView('wallet');
+                              setUserMenuOpen(false);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 mt-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            <Wallet className="h-3.5 w-3.5" />
+                            <span>Payouts & Earnings</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
 
                     {(currentUser.role === 'admin' || currentUser.phone.includes('admin')) && (
                       <button
@@ -295,16 +333,6 @@ export default function Header() {
           </div>
         </div>
       </div>
-
-      {/* Global Auth Modal */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={closeAuthModal}
-        onLoginSuccess={handleLoginSuccess}
-        defaultRole={authModalRole}
-        defaultWorkerMode={authModalWorkerMode}
-        cities={cities}
-      />
     </header>
   );
 }

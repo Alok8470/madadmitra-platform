@@ -1,18 +1,21 @@
 import type { LucideIcon } from 'lucide-react';
 
-export type UserRole = 'customer' | 'worker' | 'admin';
+export type UserRole = 'customer' | 'worker' | 'merchant_kendra' | 'admin';
 
 export type ServiceId =
   | 'cook'
   | 'cleaner'
   | 'electrician'
   | 'plumber'
+  | 'carpenter'
+  | 'painter'
   | 'all-rounder'
   | 'tag-team';
 
 export interface Service {
   id: ServiceId;
   title: string;
+  titleHi?: string;
   description: string;
   icon: LucideIcon;
   combo?: boolean;
@@ -23,15 +26,19 @@ export interface Service {
 
 export type CatalogMode = 'all' | 'verified_only';
 
+export type KYCStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
+
 export interface WorkerKYC {
   aadhaarLastFour: string;
   panLastFour?: string;
-  status: 'unverified' | 'pending' | 'verified' | 'rejected';
+  status: KYCStatus;
   submittedAt?: string;
   verifiedAt?: string;
   policeVerificationNo?: string;
   vaccinationStatus?: 'fully_vaccinated' | 'not_vaccinated';
   emergencyContact?: string;
+  kendraGuarantorName?: string;
+  kendraGuarantorShop?: string;
 }
 
 export interface Worker {
@@ -54,11 +61,31 @@ export interface Worker {
   about?: string;
   skills?: string[];
   punctualityRate?: number; // e.g. 98%
-  badgeTag?: string; // e.g. "Top Rated Cook", "Customer Favorite"
+  badgeTag?: string; // e.g. "Top Rated Cook", "Customer Favorite", "सत्यापित मिस्त्री"
+  sikkaBalance?: number; // MadadMitra Lead Tokens
+  kendraGuarantorId?: string;
+  audioBioUrl?: string;
+  mohallaJobsCount?: number; // "पड़ोसी द्वारा प्रमाणित" (e.g. 18 jobs in area)
 }
 
-export type BookingStatus = 'upcoming' | 'completed' | 'cancelled' | 'disputed';
-export type PaymentStatus = 'pending' | 'paid' | 'refunded';
+export type BookingStatus =
+  | 'pending'
+  | 'broadcasted'
+  | 'accepted'
+  | 'en_route'
+  | 'in_progress'
+  | 'upcoming' // preserved for backward-compatibility with UI tabs
+  | 'completed'
+  | 'cancelled'
+  | 'disputed';
+
+export type PaymentStatus =
+  | 'pending'
+  | 'paid'
+  | 'paid_online'
+  | 'paid_cash_cod'
+  | 'refunded'
+  | 'disputed';
 
 export interface MealPlanConfig {
   rotisCount: number;
@@ -72,6 +99,7 @@ export interface MealPlanConfig {
 
 export interface Booking {
   id: string;
+  bookingCode?: string;
   customerId?: string;
   customerName?: string;
   customerPhone?: string;
@@ -83,18 +111,64 @@ export interface Booking {
   durationHours?: number;
   status: BookingStatus;
   paymentStatus?: PaymentStatus;
-  fee: number; // Platform fee (₹10)
+  fee: number; // Platform fee (₹15 Madad Suraksha Fee)
   totalAmount?: number; // Total order amount
   area: string;
   address?: string;
   notes?: string;
   isUrgentSOS?: boolean;
+  startJobOtp?: string;
+  endJobOtp?: string;
+  beforeWorkPhotoUrl?: string;
+  afterWorkPhotoUrl?: string;
+  startedAt?: string;
+  completedAt?: string;
+  problemVoiceNoteUrl?: string;
   mealPlan?: MealPlanConfig;
   addons?: {
     extraGuests?: boolean;
     extraUtensils?: boolean;
     extraNonVeg?: boolean;
   };
+}
+
+export interface HardwareMerchant {
+  id: string;
+  profileId: string;
+  shopName: string;
+  merchantName: string;
+  phone: string;
+  shopAddress: string;
+  pincode: string;
+  area: string;
+  totalWorkersOnboarded: number;
+  walletCommissionBalance: number;
+}
+
+export interface Dispute {
+  id: string;
+  disputeCode: string;
+  bookingId: string;
+  raisedById: string;
+  category: 'bad_workmanship' | 'accidental_damage' | 'overcharging' | 'no_show';
+  claimAmount: number;
+  approvedPayout: number;
+  status: 'opened' | 'under_review' | 'resolved_refunded' | 'resolved_rejected';
+  description: string;
+  evidencePhotos?: string[];
+  createdAt: string;
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  bookingId?: string;
+  type: 'lead_fee_debit' | 'wallet_recharge' | 'convenience_fee' | 'guarantee_pool_credit' | 'kendra_kickback' | 'dispute_payout';
+  amount: number;
+  sikkaUnits?: number;
+  status: 'success' | 'pending' | 'failed';
+  remarks?: string;
+  createdAt: string;
 }
 
 export interface RefundClaim {
@@ -120,6 +194,7 @@ export interface UserProfile {
   createdAt: string;
   service?: ServiceId;
   kyc?: WorkerKYC;
+  sikkaBalance?: number;
 }
 
 export interface Testimonial {

@@ -19,10 +19,15 @@ import type { Booking } from '../types';
 import Modal from './Modal';
 
 const statusStyle: Record<Booking['status'], string> = {
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  broadcasted: 'bg-purple-50 text-purple-700 border-purple-200',
+  accepted: 'bg-blue-50 text-blue-700 border-blue-200',
+  en_route: 'bg-sky-50 text-sky-700 border-sky-200',
+  in_progress: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   upcoming: 'bg-brand-50 text-brand-700 border-brand-200',
   completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   cancelled: 'bg-slate-100 text-slate-500 border-slate-200',
-  disputed: 'bg-amber-50 text-amber-700 border-amber-200',
+  disputed: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
 export default function BookingsView() {
@@ -35,7 +40,19 @@ export default function BookingsView() {
   const [ratingTarget, setRatingTarget] = useState<Booking | null>(null);
   const [selectedRating, setSelectedRating] = useState(5);
 
-  const filtered = bookings.filter((b) => b.status === tab);
+  const filtered = bookings.filter((b) => {
+    if (tab === 'upcoming') {
+      return (
+        b.status === 'upcoming' ||
+        b.status === 'accepted' ||
+        b.status === 'in_progress' ||
+        b.status === 'broadcasted' ||
+        b.status === 'pending' ||
+        b.status === 'en_route'
+      );
+    }
+    return b.status === tab;
+  });
 
   const confirmCancel = () => {
     if (cancelTarget) {

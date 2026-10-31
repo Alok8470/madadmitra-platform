@@ -9,11 +9,36 @@ import WorkerProfilePage from './components/WorkerProfilePage';
 import AdminDashboard from './components/AdminDashboard';
 import BottomNav from './components/BottomNav';
 import PartnerJoinPage from './components/PartnerJoinPage';
+import AuthModal from './components/AuthModal';
+import CategoryPage from './components/CategoryPage';
+import WalletPage from './components/WalletPage';
+import type { UserProfile } from './types';
 
 function Shell() {
-  const { view, selectedWorker, setView } = useApp();
+  const {
+    view,
+    selectedWorker,
+    selectedCategory,
+    setView,
+    authModalOpen,
+    closeAuthModal,
+    authModalRole,
+    authModalWorkerMode,
+    cities,
+    setCurrentUser,
+  } = useApp();
+
+  const handleLoginSuccess = (profile: UserProfile) => {
+    setCurrentUser(profile);
+    if (profile.role === 'worker') {
+      setView('worker');
+    } else if (profile.role === 'admin') {
+      setView('admin');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between pb-16 sm:pb-0">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
       <div>
         <Header />
         <main>
@@ -23,12 +48,14 @@ function Shell() {
           {view === 'customer' && <CustomerDashboard />}
           {view === 'admin' && <AdminDashboard />}
           {view === 'partner-join' && <PartnerJoinPage />}
+          {view === 'category' && <CategoryPage />}
+          {view === 'wallet' && <WalletPage />}
 
           {/* WORKER PROFILE ROUTE */}
           {view === 'worker-profile' && selectedWorker && (
             <WorkerProfilePage
               worker={selectedWorker}
-              onBack={() => setView('home')}
+              onBack={() => setView(selectedCategory ? 'category' : 'home')}
             />
           )}
 
@@ -55,6 +82,16 @@ function Shell() {
 
       {/* Mobile Sticky Bottom Bar */}
       <BottomNav />
+
+      {/* Global Auth Modal rendered outside header for full viewport layering */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={closeAuthModal}
+        onLoginSuccess={handleLoginSuccess}
+        defaultRole={authModalRole}
+        defaultWorkerMode={authModalWorkerMode}
+        cities={cities}
+      />
     </div>
   );
 }

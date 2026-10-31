@@ -1,4 +1,4 @@
-import { ChefHat, Sparkles, Zap, Wrench, Users, UserPlus } from 'lucide-react';
+import { ChefHat, Sparkles, Zap, Wrench, Users, UserPlus, Hammer, Paintbrush } from 'lucide-react';
 import type { ServiceId, Service, Worker, Booking, Testimonial } from '../types';
 
 export { type ServiceId, type Service, type Worker, type Booking, type Testimonial };
@@ -39,6 +39,24 @@ export const SERVICES: Service[] = [
     startingPrice: 180,
     accent: 'from-blue-500 to-indigo-600',
     popularItems: ['Tap Leakage', 'Blockage Clear', 'Motor Pump Repair', 'Toilet Fitting'],
+  },
+  {
+    id: 'carpenter',
+    title: 'Carpenter & Woodwork',
+    description: 'Door lock fitting, hinge repair, furniture assembly & wooden polishing',
+    icon: Hammer,
+    startingPrice: 180,
+    accent: 'from-amber-700 to-yellow-800',
+    popularItems: ['Door Alignment', 'Lock Fitting', 'Chair/Table Fix', 'Custom Shelf'],
+  },
+  {
+    id: 'painter',
+    title: 'Painter & Wall Touchup',
+    description: 'Interior wall paint, damp proofing, whitewashing & wood polish',
+    icon: Paintbrush,
+    startingPrice: 200,
+    accent: 'from-rose-500 to-red-600',
+    popularItems: ['Single Room Paint', 'Seepage Patch', 'Exterior Touchup', 'Enamel Paint'],
   },
   {
     id: 'all-rounder',
@@ -112,6 +130,8 @@ export const SERVICE_LABELS: Record<ServiceId, string> = {
   cleaner: 'House Maid & Cleaner',
   electrician: 'Electrician',
   plumber: 'Plumber',
+  carpenter: 'Carpenter & Woodwork',
+  painter: 'Painter & Wall Touchup',
   'all-rounder': 'All-Rounder Helper',
   'tag-team': 'Tag-Team Combo (2 Helpers)',
 };

@@ -3,7 +3,7 @@ import { CITIES, INITIAL_BOOKINGS } from '../data/mockData';
 import { getStoredSession, clearSession } from '../services/authService';
 import type { Booking, Worker, UserProfile, UserRole, CatalogMode } from '../types';
 
-export type View = 'home' | 'worker-profile' | 'customer' | 'worker' | 'bookings' | 'admin' | 'partner-join';
+export type View = 'home' | 'worker-profile' | 'customer' | 'worker' | 'bookings' | 'admin' | 'partner-join' | 'category' | 'wallet';
 
 const STORAGE_LIVE_WORKERS = 'madadmitra_live_workers';
 const STORAGE_CATALOG_MODE = 'madadmitra_catalog_mode';
@@ -31,6 +31,8 @@ interface AppState {
   setView: (v: View) => void;
   selectedWorker: Worker | null;
   setSelectedWorker: (w: Worker | null) => void;
+  selectedCategory: string | null;
+  setSelectedCategory: (c: string | null) => void;
   workers: Worker[];
   toggleWorkerOnline: (id: string) => void;
   toggleWorkerVerified: (id: string) => void;
@@ -82,6 +84,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [city, setCity] = useState<string>('Deoria (All Areas)');
   const [view, setViewState] = useState<View>(getViewFromPathname);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [workers, setWorkers] = useState<Worker[]>(getInitialWorkers);
   const [catalogMode, setCatalogModeState] = useState<CatalogMode>(getInitialCatalogMode);
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
@@ -193,6 +196,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setView,
       selectedWorker,
       setSelectedWorker,
+      selectedCategory,
+      setSelectedCategory,
       workers,
       toggleWorkerOnline,
       toggleWorkerVerified,
