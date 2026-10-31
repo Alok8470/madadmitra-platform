@@ -49,8 +49,8 @@ export const DispatchRadarModal: React.FC<Props> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-lg rounded-3xl bg-white border-2 border-slate-200 shadow-elevated p-6 sm:p-8 text-slate-900 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-lg rounded-3xl bg-white border-2 border-slate-200 shadow-elevated p-5 sm:p-8 text-slate-900 max-h-[92vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-5 right-5 h-9 w-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-colors z-20"
@@ -181,7 +181,7 @@ export const DispatchRadarModal: React.FC<Props> = ({
             </div>
 
             {/* Actions */}
-            <div className="pt-2 flex gap-3">
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
               <button
                 onClick={() => {
                   const text = encodeURIComponent(
@@ -193,13 +193,13 @@ export const DispatchRadarModal: React.FC<Props> = ({
                   );
                   window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
                 }}
-                className="btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl text-xs flex-1 flex items-center justify-center gap-2 shadow-soft"
+                className="btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 sm:py-3 px-4 rounded-xl text-xs flex-1 flex items-center justify-center gap-2 shadow-soft min-h-[44px] active:scale-95"
               >
                 <span>📲 Share ETA on WhatsApp</span>
               </button>
               <button
                 onClick={onClose}
-                className="btn-primary py-3 px-5 text-xs font-bold"
+                className="btn-primary py-3.5 sm:py-3 px-5 text-xs font-bold min-h-[44px] active:scale-95"
               >
                 Done
               </button>

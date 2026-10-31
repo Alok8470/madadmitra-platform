@@ -90,7 +90,7 @@ export default function Homepage() {
         <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-accent-400/20 blur-3xl pointer-events-none" />
         <div className="absolute -left-20 bottom-0 h-80 w-80 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
 
-        <div className="relative mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16 lg:py-20">
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-16 lg:py-20">
           <div className="grid items-center gap-10 lg:grid-cols-12">
             {/* Left Content */}
             <div className="lg:col-span-7">
@@ -182,9 +182,9 @@ export default function Homepage() {
                 <button
                   type="button"
                   onClick={() => setShowSosModal(true)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-amber-400 text-slate-950 font-black px-4 py-2.5 text-xs shadow-lg hover:bg-amber-300 transition-all active:scale-95"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 text-slate-950 font-black px-4 py-3 sm:py-2.5 text-xs shadow-lg hover:bg-amber-300 transition-all active:scale-95 min-h-[44px]"
                 >
-                  <Zap className="h-4 w-4 fill-slate-950 animate-bounce" />
+                  <Zap className="h-4 w-4 fill-slate-950 animate-bounce shrink-0" />
                   <span>🚨 Urgent 30-Min Dispatch (Emergency Helper)</span>
                 </button>
               </div>
@@ -287,43 +287,43 @@ export default function Homepage() {
             </p>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand-100 text-brand-700 font-bold">
-                <BadgeCheck className="h-5 w-5" />
+          <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-5">
+              <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl bg-brand-100 text-brand-700 font-bold">
+                <BadgeCheck className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <h3 className="mt-3 font-bold text-slate-900 text-sm">Verified Background</h3>
-              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+              <h3 className="mt-2.5 font-bold text-slate-900 text-xs sm:text-sm">Verified Background</h3>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-500 leading-relaxed">
                 Govt. ID checked & locality references verified before onboarding.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100 text-amber-700 font-bold">
-                <Zap className="h-5 w-5" />
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-5">
+              <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl bg-amber-100 text-amber-700 font-bold">
+                <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <h3 className="mt-3 font-bold text-slate-900 text-sm">Flat ₹10 Platform Fee</h3>
-              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+              <h3 className="mt-2.5 font-bold text-slate-900 text-xs sm:text-sm">Flat ₹10 Platform Fee</h3>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-500 leading-relaxed">
                 No high commission cuts from helpers, no expensive club memberships.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700 font-bold">
-                <Award className="h-5 w-5" />
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-5">
+              <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700 font-bold">
+                <Award className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <h3 className="mt-3 font-bold text-slate-900 text-sm">Absence Guarantee</h3>
-              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+              <h3 className="mt-2.5 font-bold text-slate-900 text-xs sm:text-sm">Absence Guarantee</h3>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-500 leading-relaxed">
                 If your regular cook/maid takes unexpected leave, get instant backup or refund.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-100 text-purple-700 font-bold">
-                <ThumbsUp className="h-5 w-5" />
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-5">
+              <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl bg-purple-100 text-purple-700 font-bold">
+                <ThumbsUp className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <h3 className="mt-3 font-bold text-slate-900 text-sm">Pay After Service</h3>
-              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+              <h3 className="mt-2.5 font-bold text-slate-900 text-xs sm:text-sm">Pay After Service</h3>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-500 leading-relaxed">
                 Secure payment with service verification OTP on arrival.
               </p>
             </div>
@@ -338,7 +338,7 @@ export default function Homepage() {
             <span className="text-xs font-bold uppercase tracking-wider text-brand-600">
               Categories
             </span>
-            <h2 className="mt-1 font-display text-2xl font-extrabold text-slate-900">
+            <h2 className="mt-1 font-display text-xl sm:text-2xl font-extrabold text-slate-900">
               Select Household Service
             </h2>
           </div>
@@ -347,7 +347,7 @@ export default function Homepage() {
           </span>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5">
+        <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
           {SERVICES.map((s) => {
             const Icon = s.icon;
             return (
@@ -357,7 +357,7 @@ export default function Homepage() {
                   if (setSelectedCategory) setSelectedCategory(s.id);
                   setView('category');
                 }}
-                className={`group card-hover p-5 text-left flex flex-col justify-between transition-all duration-200 ${
+                className={`group card-hover p-3.5 sm:p-5 text-left flex flex-col justify-between transition-all duration-200 active:scale-98 ${
                   selectedCategory === s.id
                     ? 'border-brand-600 ring-2 ring-brand-200 bg-brand-50/40 shadow-soft'
                     : 'bg-white hover:border-brand-300'
@@ -366,28 +366,28 @@ export default function Homepage() {
                 <div>
                   <div className="flex items-start justify-between">
                     <div
-                      className={`grid h-13 w-13 place-items-center rounded-2xl bg-gradient-to-br ${s.accent} text-white shadow-soft transition-transform group-hover:scale-105 p-3`}
+                      className={`grid h-10 w-10 sm:h-13 sm:w-13 place-items-center rounded-xl sm:rounded-2xl bg-gradient-to-br ${s.accent} text-white shadow-soft transition-transform group-hover:scale-105 p-2 sm:p-3`}
                     >
-                      <Icon className="h-6 w-6" />
+                      <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                     </div>
-                    <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">
-                      Live Now
+                    <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] sm:text-[10px] px-1.5 sm:px-2.5">
+                      Live
                     </span>
                   </div>
-                  <h3 className="mt-3.5 font-display text-base font-extrabold text-slate-900 group-hover:text-brand-700 transition-colors">
+                  <h3 className="mt-2.5 sm:mt-3.5 font-display text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-brand-700 transition-colors leading-snug">
                     {s.title}
                   </h3>
-                  <p className="mt-1 text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                  <p className="mt-1 text-[11px] sm:text-xs text-slate-500 line-clamp-1 sm:line-clamp-2 leading-relaxed">
                     {s.description}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Starting Visit</span>
-                    <span className="font-extrabold text-brand-700 text-sm">₹{s.startingPrice}</span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block">Visit</span>
+                    <span className="font-extrabold text-brand-700 text-xs sm:text-sm">₹{s.startingPrice}</span>
                   </div>
-                  <span className="text-xs font-bold text-brand-600 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                  <span className="text-[11px] sm:text-xs font-bold text-brand-600 group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5">
                     Book &rarr;
                   </span>
                 </div>

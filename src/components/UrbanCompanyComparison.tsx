@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Check,
   X,
@@ -13,6 +13,7 @@ import {
   CircleDollarSign,
   Store,
   RotateCcw,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -22,9 +23,12 @@ export const UrbanCompanyComparison: React.FC = () => {
   const { language } = useLanguage();
   const isHi = language === 'hi';
 
+  const [mobileFilter, setMobileFilter] = useState<'all' | 'customer' | 'worker'>('all');
+
   const comparisonRows = [
     {
       id: 'commission',
+      category: 'worker' as const,
       icon: CircleDollarSign,
       parameter: isHi ? 'कारीगर कमीशन कटौती' : 'Worker Commission Cut',
       targetAudience: isHi ? 'कारीगर लाभ' : 'Worker Benefit',
@@ -40,6 +44,7 @@ export const UrbanCompanyComparison: React.FC = () => {
     },
     {
       id: 'pricing',
+      category: 'customer' as const,
       icon: Zap,
       parameter: isHi ? 'पारदर्शी प्रारंभिक दरें' : 'Starting Service Rates',
       targetAudience: isHi ? 'ग्राहक लाभ' : 'Customer Benefit',
@@ -55,6 +60,7 @@ export const UrbanCompanyComparison: React.FC = () => {
     },
     {
       id: 'parts',
+      category: 'customer' as const,
       icon: Store,
       parameter: isHi ? 'स्पेयर पार्ट्स व सामान' : 'Spare Parts & Materials',
       targetAudience: isHi ? 'पारदर्शिता' : 'Transparency',
@@ -70,6 +76,7 @@ export const UrbanCompanyComparison: React.FC = () => {
     },
     {
       id: 'trust',
+      category: 'worker' as const,
       icon: ShieldCheck,
       parameter: isHi ? 'स्थानीय सत्यापन व भरोसा' : 'Local Verification & Trust',
       targetAudience: isHi ? 'सुरक्षा' : 'Safety',
@@ -85,6 +92,7 @@ export const UrbanCompanyComparison: React.FC = () => {
     },
     {
       id: 'warranty',
+      category: 'customer' as const,
       icon: Award,
       parameter: isHi ? 'संपत्ति सुरक्षा व री-वर्क वारंटी' : 'Damage Protection & Warranty',
       targetAudience: isHi ? 'ग्राहक सुरक्षा' : 'Guarantee',
@@ -100,6 +108,7 @@ export const UrbanCompanyComparison: React.FC = () => {
     },
     {
       id: 'payment',
+      category: 'worker' as const,
       icon: RotateCcw,
       parameter: isHi ? 'सीधा भुगतान व प्लेटफॉर्म निष्ठा' : 'Cash & Direct Payment Flexibility',
       targetAudience: isHi ? 'सुविधा' : 'Convenience',
@@ -115,6 +124,11 @@ export const UrbanCompanyComparison: React.FC = () => {
     },
   ];
 
+  const filteredMobileRows = comparisonRows.filter((r) => {
+    if (mobileFilter === 'all') return true;
+    return r.category === mobileFilter;
+  });
+
   const handleBookTechnician = () => {
     const el = document.getElementById('categories-section');
     if (el) {
@@ -129,26 +143,26 @@ export const UrbanCompanyComparison: React.FC = () => {
   };
 
   return (
-    <section className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
-      <div className="rounded-3xl border-2 border-slate-200/90 bg-white p-6 sm:p-10 shadow-elevated relative overflow-hidden">
+    <section className="mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-10">
+      <div className="rounded-3xl border-2 border-slate-200/90 bg-white p-4 sm:p-10 shadow-elevated relative overflow-hidden">
         {/* Subtle Ambient Glow */}
         <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
         <div className="absolute -left-20 bottom-0 h-72 w-72 rounded-full bg-brand-500/10 blur-3xl pointer-events-none" />
 
         {/* Section Header */}
         <div className="relative z-10 text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-1.5 text-xs font-bold text-brand-700 border border-brand-200/80 mb-3 shadow-xs">
+          <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3.5 py-1.5 text-xs font-bold text-brand-700 border border-brand-200/80 mb-2.5 shadow-xs">
             <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500" />
             <span>{isHi ? 'तथ्यात्मक व निष्पक्ष तुलना' : 'TRANSPARENT MARKET COMPARISON'}</span>
           </div>
 
-          <h2 className="font-display text-2xl sm:text-4xl font-black text-slate-950 tracking-tight">
+          <h2 className="font-display text-xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight">
             {isHi
               ? 'मदद मित्र आपके और कारीगरों दोनों के लिए सबसे बेहतर क्यों है?'
               : 'Why MadadMitra is Better for You and Workers'}
           </h2>
 
-          <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-normal max-w-2xl mx-auto">
+          <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed font-normal max-w-2xl mx-auto">
             {isHi
               ? 'स्थानीय ज़रूरतों के लिए निर्मित: 0% कारीगर कमीशन, पूरी तरह पारदर्शी दरें और भरोसेमंद स्थानीय सहायता।'
               : 'Designed for local needs with 0% worker commission, transparent pricing, and trusted local support.'}
@@ -156,8 +170,8 @@ export const UrbanCompanyComparison: React.FC = () => {
         </div>
 
         {/* DUAL BENEFIT PILLARS (Customer & Worker Harmony) */}
-        <div className="relative z-10 mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
-          <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/70 p-4 sm:p-5 flex items-start gap-3.5 shadow-soft">
+        <div className="relative z-10 mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-4xl mx-auto">
+          <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/70 p-3.5 sm:p-5 flex items-start gap-3 shadow-soft">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white font-bold shadow-sm">
               <Users className="h-5 w-5" />
             </div>
@@ -176,7 +190,7 @@ export const UrbanCompanyComparison: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border-2 border-brand-300 bg-brand-50/70 p-4 sm:p-5 flex items-start gap-3.5 shadow-soft">
+          <div className="rounded-2xl border-2 border-brand-300 bg-brand-50/70 p-3.5 sm:p-5 flex items-start gap-3 shadow-soft">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-600 text-white font-bold shadow-sm">
               <Briefcase className="h-5 w-5" />
             </div>
@@ -259,66 +273,110 @@ export const UrbanCompanyComparison: React.FC = () => {
           </table>
         </div>
 
-        {/* MOBILE RESPONSIVE COMPARISON CARDS (<md) */}
-        <div className="relative z-10 mt-6 space-y-3.5 md:hidden">
-          {comparisonRows.map((row) => (
-            <div
-              key={row.id}
-              className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3 shadow-xs"
+        {/* MOBILE RESPONSIVE COMPARISON (<md) WITH SEGMENTED FILTER */}
+        <div className="relative z-10 mt-6 md:hidden">
+          {/* Mobile Segmented Filter Bar */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl mb-4 text-xs font-bold">
+            <button
+              onClick={() => setMobileFilter('all')}
+              className={`flex-1 py-2 px-2 rounded-xl transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
+                mobileFilter === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs font-black'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
             >
-              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
-                <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
-                  <row.icon className="h-4 w-4 text-brand-600 shrink-0" />
-                  <span>{row.parameter}</span>
-                </div>
-                <span className="badge bg-slate-200 text-slate-700 text-[9px] font-bold">
-                  {row.targetAudience}
-                </span>
-              </div>
+              <SlidersHorizontal className="h-3 w-3" />
+              <span>{isHi ? 'सभी (6)' : 'All (6)'}</span>
+            </button>
+            <button
+              onClick={() => setMobileFilter('customer')}
+              className={`flex-1 py-2 px-2 rounded-xl transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
+                mobileFilter === 'customer'
+                  ? 'bg-emerald-600 text-white shadow-xs font-black'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Users className="h-3 w-3" />
+              <span>{isHi ? 'ग्राहक (3)' : 'Households'}</span>
+            </button>
+            <button
+              onClick={() => setMobileFilter('worker')}
+              className={`flex-1 py-2 px-2 rounded-xl transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
+                mobileFilter === 'worker'
+                  ? 'bg-brand-600 text-white shadow-xs font-black'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Briefcase className="h-3 w-3" />
+              <span>{isHi ? 'कारीगर (3)' : 'Workers'}</span>
+            </button>
+          </div>
 
-              {/* MadadMitra Advantage Card */}
-              <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-3 text-xs text-emerald-950">
-                <div className="flex items-center justify-between font-black text-[11px] text-emerald-800 uppercase tracking-wide mb-1">
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck className="h-3.5 w-3.5" /> MadadMitra
+          {/* Cards Stack */}
+          <div className="space-y-3">
+            {filteredMobileRows.map((row) => (
+              <div
+                key={row.id}
+                className="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-xs"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
+                    <row.icon className="h-4 w-4 text-brand-600 shrink-0" />
+                    <span>{row.parameter}</span>
+                  </div>
+                  <span className="badge bg-slate-100 text-slate-600 text-[9px] font-bold">
+                    {row.targetAudience}
                   </span>
-                  <span className="badge bg-emerald-600 text-white text-[8px]">SUPERIOR</span>
                 </div>
-                <div className="flex items-start gap-2 font-bold mt-1">
-                  <Check className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5 stroke-[3]" />
-                  <span>{row.madadmitra}</span>
-                </div>
-              </div>
 
-              {/* Traditional Platforms Card */}
-              <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700">
-                <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wide block mb-1">
-                  {isHi ? 'पारंपरिक ऐप्स' : 'Other Platforms'}
-                </span>
-                <div className="flex items-start gap-2 text-rose-700 font-medium">
-                  <X className="h-4 w-4 text-rose-500 shrink-0 mt-0.5 stroke-[2.5]" />
-                  <span>{row.traditional}</span>
+                {/* MadadMitra Advantage Card */}
+                <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50/80 p-3 text-xs text-emerald-950">
+                  <div className="flex items-center justify-between font-black text-[10px] text-emerald-800 uppercase tracking-wide mb-1">
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" /> MadadMitra
+                    </span>
+                    <span className="badge bg-emerald-600 text-white text-[8px] font-black">SUPERIOR</span>
+                  </div>
+                  <div className="flex items-start gap-2 font-bold mt-1 text-slate-900">
+                    <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-emerald-600 text-white mt-0.5">
+                      <Check className="h-3 w-3 stroke-[3]" />
+                    </span>
+                    <span className="leading-snug">{row.madadmitra}</span>
+                  </div>
                 </div>
-              </div>
 
-              <p className="text-[11px] text-slate-500 italic leading-relaxed">
-                {row.explanation}
-              </p>
-            </div>
-          ))}
+                {/* Traditional Platforms Card */}
+                <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 p-2.5 text-xs text-slate-700">
+                  <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wide block mb-1">
+                    {isHi ? 'पारंपरिक ऐप्स' : 'Other Platforms'}
+                  </span>
+                  <div className="flex items-start gap-2 text-rose-700 font-medium">
+                    <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-rose-100 text-rose-600 mt-0.5">
+                      <X className="h-3 w-3 stroke-[2.5]" />
+                    </span>
+                    <span className="leading-snug">{row.traditional}</span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500 italic leading-relaxed pt-0.5">
+                  {row.explanation}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Bottom Callout & Action Bar */}
-        <div className="relative z-10 mt-8 rounded-2xl bg-gradient-to-r from-slate-900 via-brand-950 to-slate-900 p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-elevated">
-          <div className="flex items-start sm:items-center gap-3.5 max-w-xl">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-400 text-slate-950 font-black shadow-soft">
-              <Wrench className="h-6 w-6" />
+        {/* Bottom Callout & Action Bar (Mobile Touch Optimized) */}
+        <div className="relative z-10 mt-6 sm:mt-8 rounded-2xl bg-gradient-to-r from-slate-900 via-brand-950 to-slate-900 p-4 sm:p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-elevated">
+          <div className="flex items-start sm:items-center gap-3 max-w-xl">
+            <div className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-2xl bg-amber-400 text-slate-950 font-black shadow-soft">
+              <Wrench className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <h4 className="font-display font-black text-white text-base">
+              <h4 className="font-display font-black text-white text-sm sm:text-base">
                 {isHi ? 'विश्वसनीय स्थानीय सहायता का अनुभव करें' : 'Experience Transparent Household Care'}
               </h4>
-              <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
+              <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5 leading-relaxed">
                 {isHi
                   ? 'स्थानीय हार्डवेयर व्यापारियों की गारंटी, 0% कमीशन और पारदर्शी दरों के साथ आज ही बुक करें।'
                   : 'Backed by verified local hardware merchants, 0% worker commission, and standardized task rates.'}
@@ -326,11 +384,11 @@ export const UrbanCompanyComparison: React.FC = () => {
             </div>
           </div>
 
-          {/* DUAL CALL TO ACTION BUTTONS */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+          {/* DUAL CALL TO ACTION BUTTONS - FULL WIDTH ON MOBILE */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 w-full sm:w-auto">
             <button
               onClick={handleBookTechnician}
-              className="btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-3 px-5 text-xs rounded-xl shadow-soft flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              className="btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-3.5 sm:py-3 px-5 text-xs sm:text-sm rounded-xl shadow-soft flex items-center justify-center gap-2 active:scale-95 transition-transform min-h-[48px]"
             >
               <span>{isHi ? 'विश्वसनीय कारीगर बुक करें' : 'Book a Trusted Technician'}</span>
               <ArrowRight className="h-4 w-4" />
@@ -338,7 +396,7 @@ export const UrbanCompanyComparison: React.FC = () => {
 
             <button
               onClick={handleJoinPartner}
-              className="btn bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-4 text-xs rounded-xl border border-white/20 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              className="btn bg-white/10 hover:bg-white/20 text-white font-bold py-3.5 sm:py-3 px-4 text-xs sm:text-sm rounded-xl border border-white/20 flex items-center justify-center gap-2 active:scale-95 transition-transform min-h-[48px]"
             >
               <Briefcase className="h-4 w-4 text-emerald-400" />
               <span>{isHi ? 'कारीगर साथी बनें (0% कट)' : 'Join as a Partner'}</span>

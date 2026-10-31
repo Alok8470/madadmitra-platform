@@ -17,13 +17,13 @@ export default function SavingsCalculator() {
   const annualSavings = monthlySavingsVsAggregator * 12;
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+    <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-8 shadow-sm">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
         <div>
           <span className="badge bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase px-3 py-1">
             <Sparkles className="h-3 w-3 mr-1" /> Transparent Pricing
           </span>
-          <h2 className="mt-2 font-display text-2xl sm:text-3xl font-extrabold text-slate-900">
+          <h2 className="mt-2 font-display text-xl sm:text-3xl font-extrabold text-slate-900 leading-tight">
             How Much Do You Save With MadadMitra?
           </h2>
           <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-xl">
@@ -33,27 +33,30 @@ export default function SavingsCalculator() {
         </div>
 
         {/* Big Savings Highlight */}
-        <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-5 text-white shadow-soft shrink-0">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100 flex items-center gap-1">
+        <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-4 sm:p-5 text-white shadow-soft shrink-0">
+          <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-100 flex items-center gap-1">
             <TrendingUp className="h-3.5 w-3.5" /> Estimated Annual Savings
           </p>
-          <div className="mt-1 font-display text-3xl sm:text-4xl font-black">
+          <div className="mt-1 font-display text-2xl sm:text-4xl font-black">
             ₹{annualSavings.toLocaleString('en-IN')}
           </div>
-          <p className="mt-0.5 text-[11px] text-emerald-100">
+          <p className="mt-0.5 text-[10px] sm:text-[11px] text-emerald-100">
             Saved on commission & membership fees
           </p>
         </div>
       </div>
 
       {/* Slider Control */}
-      <div className="mt-8 rounded-2xl bg-slate-50 p-5 border border-slate-100">
-        <div className="flex justify-between items-center mb-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+      <div className="mt-6 sm:mt-8 rounded-2xl bg-slate-50 p-4 sm:p-5 border border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
+          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
             Select Your Frequency:
           </label>
-          <span className="rounded-xl bg-white px-3 py-1 text-sm font-extrabold text-brand-700 shadow-sm border border-slate-200">
-            {visitsPerMonth} {visitsPerMonth === 1 ? 'Visit' : 'Visits'} / Month ({visitsPerMonth >= 20 ? 'Daily Regular' : visitsPerMonth >= 8 ? 'Weekly Regular' : 'Occasional'})
+          <span className="self-start sm:self-auto rounded-xl bg-white px-2.5 py-1 text-xs sm:text-sm font-extrabold text-brand-700 shadow-sm border border-slate-200">
+            {visitsPerMonth} {visitsPerMonth === 1 ? 'Visit' : 'Visits'} / Mo •{' '}
+            <span className="text-slate-600 font-medium">
+              {visitsPerMonth >= 20 ? 'Daily Regular' : visitsPerMonth >= 8 ? 'Weekly' : 'Occasional'}
+            </span>
           </span>
         </div>
         <input
@@ -62,12 +65,12 @@ export default function SavingsCalculator() {
           max="30"
           value={visitsPerMonth}
           onChange={(e) => setVisitsPerMonth(Number(e.target.value))}
-          className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
+          className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600 touch-manipulation"
         />
-        <div className="flex justify-between text-[11px] font-semibold text-slate-400 mt-2">
-          <span>1 time / month</span>
-          <span>8 times (Weekend only)</span>
-          <span>25 times (Daily contract)</span>
+        <div className="flex justify-between text-[10px] sm:text-[11px] font-semibold text-slate-400 mt-2">
+          <span>1x (1 time)</span>
+          <span>8x (Weekends)</span>
+          <span>25x (Daily)</span>
         </div>
       </div>
 

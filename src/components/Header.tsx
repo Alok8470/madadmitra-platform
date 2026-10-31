@@ -156,7 +156,7 @@ export default function Header() {
               </button>
 
               {cityOpen && (
-                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-elevated animate-scale-in origin-top-right z-50 flex flex-col">
+                <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-1.5rem))] max-h-[80vh] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-elevated animate-scale-in origin-top-right z-50 flex flex-col">
                   {/* Search bar inside location dropdown */}
                   <div className="p-2.5 border-b border-slate-100 bg-slate-50/70">
                     <div className="relative">
@@ -166,14 +166,14 @@ export default function Header() {
                         value={citySearch}
                         onChange={(e) => setCitySearch(e.target.value)}
                         placeholder={language === 'hi' ? 'इलाका खोजें...' : 'Search colony / area...'}
-                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white placeholder:text-slate-400 outline-none focus:border-brand-500"
+                        className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-200 bg-white placeholder:text-slate-400 outline-none focus:border-brand-500"
                       />
                     </div>
                     {/* 1-Tap Geolocation button */}
                     <button
                       onClick={handleDetectLocation}
                       disabled={isLocating}
-                      className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 text-[11px] font-bold border border-brand-200/70 transition-colors"
+                      className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 text-[11px] font-bold border border-brand-200/70 transition-colors active:scale-98"
                     >
                       <Navigation className={`h-3 w-3 ${isLocating ? 'animate-spin' : ''}`} />
                       <span>{isLocating ? (language === 'hi' ? 'स्थान खोज रहे हैं...' : 'Detecting GPS...') : (language === 'hi' ? '🎯 मेरा वर्तमान स्थान चुनें (GPS)' : '🎯 Detect My Area (GPS)')}</span>
@@ -181,7 +181,7 @@ export default function Header() {
                   </div>
 
                   {/* Scrollable Area List */}
-                  <div className="overflow-y-auto p-2 space-y-1 max-h-64">
+                  <div className="overflow-y-auto overscroll-contain p-2 space-y-1 max-h-64">
                     <div className="px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 rounded-lg flex items-center justify-between">
                       <span>{language === 'hi' ? '📍 देवरिया • सक्रिय क्षेत्र' : '📍 Deoria • Live Service Areas'}</span>
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -196,7 +196,7 @@ export default function Header() {
                             setCityOpen(false);
                             setCitySearch('');
                           }}
-                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs transition-colors ${
+                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 min-h-[44px] text-xs transition-colors active:scale-98 ${
                             areaName === city
                               ? 'bg-brand-50 font-bold text-brand-700'
                               : 'text-slate-700 hover:bg-slate-50'

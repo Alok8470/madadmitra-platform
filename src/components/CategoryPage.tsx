@@ -146,7 +146,7 @@ export default function CategoryPage() {
   const Icon = categoryData.icon;
 
   return (
-    <div className="pb-36 max-w-6xl mx-auto px-4 sm:px-6 py-6 animate-fade-in">
+    <div className="pb-44 sm:pb-36 max-w-6xl mx-auto px-3.5 sm:px-6 py-4 sm:py-6 animate-fade-in">
       {/* Header Back & Location */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -192,7 +192,7 @@ export default function CategoryPage() {
       </div>
 
       {/* SUB-TABS: Rate Card vs Verified Technicians vs Spare Parts */}
-      <div className="flex border-b border-slate-200 mb-6 gap-2 sm:gap-4 overflow-x-auto no-scrollbar">
+      <div className="flex border-b border-slate-200 mb-6 gap-2 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
         <button
           onClick={() => setActiveTab('rate_card')}
           className={`pb-3 px-3 text-xs sm:text-sm font-extrabold whitespace-nowrap flex items-center gap-2 border-b-2 transition-all ${
@@ -357,7 +357,7 @@ export default function CategoryPage() {
                     {qty === 0 ? (
                       <button
                         onClick={() => handleAddSku(sku.id)}
-                        className="btn-primary py-2 px-5 text-xs font-bold rounded-xl shadow-soft"
+                        className="btn-primary py-2.5 px-5 text-xs font-bold rounded-xl shadow-soft min-h-[40px] active:scale-95"
                       >
                         + Add to Bill
                       </button>
@@ -365,14 +365,16 @@ export default function CategoryPage() {
                       <div className="flex items-center gap-2 bg-brand-50 border border-brand-200 p-1 rounded-xl">
                         <button
                           onClick={() => handleRemoveSku(sku.id)}
-                          className="h-7 w-7 rounded-lg bg-white text-brand-700 font-bold flex items-center justify-center hover:bg-brand-100 shadow-xs"
+                          className="h-8 w-8 sm:h-7 sm:w-7 rounded-lg bg-white text-brand-700 font-bold flex items-center justify-center hover:bg-brand-100 shadow-xs active:scale-90 transition-transform"
+                          aria-label="Decrease quantity"
                         >
                           <Minus className="h-3.5 w-3.5" />
                         </button>
-                        <span className="font-bold text-brand-900 text-sm px-2">{qty}</span>
+                        <span className="font-bold text-brand-900 text-sm px-2 select-none">{qty}</span>
                         <button
                           onClick={() => handleAddSku(sku.id)}
-                          className="h-7 w-7 rounded-lg bg-brand-600 text-white font-bold flex items-center justify-center hover:bg-brand-700 shadow-xs"
+                          className="h-8 w-8 sm:h-7 sm:w-7 rounded-lg bg-brand-600 text-white font-bold flex items-center justify-center hover:bg-brand-700 shadow-xs active:scale-90 transition-transform"
+                          aria-label="Increase quantity"
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </button>
@@ -526,7 +528,7 @@ export default function CategoryPage() {
                     {qty === 0 ? (
                       <button
                         onClick={() => handleAddPart(part.id)}
-                        className="btn bg-amber-400 hover:bg-amber-300 text-slate-950 py-2 px-4 text-xs font-black rounded-xl shadow-soft"
+                        className="btn bg-amber-400 hover:bg-amber-300 text-slate-950 py-2.5 px-4 text-xs font-black rounded-xl shadow-soft min-h-[40px] active:scale-95"
                       >
                         + Add Part to Bill
                       </button>
@@ -534,14 +536,16 @@ export default function CategoryPage() {
                       <div className="flex items-center gap-2 bg-amber-50 border border-amber-300 p-1 rounded-xl">
                         <button
                           onClick={() => handleRemovePart(part.id)}
-                          className="h-7 w-7 rounded-lg bg-white text-slate-900 font-bold flex items-center justify-center hover:bg-amber-100 shadow-xs"
+                          className="h-8 w-8 sm:h-7 sm:w-7 rounded-lg bg-white text-slate-900 font-bold flex items-center justify-center hover:bg-amber-100 shadow-xs active:scale-90 transition-transform"
+                          aria-label="Decrease quantity"
                         >
                           <Minus className="h-3.5 w-3.5" />
                         </button>
-                        <span className="font-bold text-slate-900 text-sm px-2">{qty}</span>
+                        <span className="font-bold text-slate-900 text-sm px-2 select-none">{qty}</span>
                         <button
                           onClick={() => handleAddPart(part.id)}
-                          className="h-7 w-7 rounded-lg bg-amber-400 text-slate-950 font-bold flex items-center justify-center hover:bg-amber-300 shadow-xs"
+                          className="h-8 w-8 sm:h-7 sm:w-7 rounded-lg bg-amber-400 text-slate-950 font-bold flex items-center justify-center hover:bg-amber-300 shadow-xs active:scale-90 transition-transform"
+                          aria-label="Increase quantity"
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </button>
@@ -555,25 +559,25 @@ export default function CategoryPage() {
         </div>
       )}
 
-      {/* STICKY BOTTOM FLOATING CART TRAY (CONVERTS 3X BETTER THAN URBAN COMPANY) */}
+      {/* STICKY BOTTOM FLOATING CART TRAY (CLEARANCE FOR MOBILE BOTTOMNAV) */}
       {totalCartCount > 0 && (
-        <div className="fixed bottom-16 sm:bottom-6 left-4 right-4 max-w-2xl mx-auto z-40 animate-slide-up">
-          <div className="rounded-2xl bg-slate-950 text-white p-4 shadow-elevated border-2 border-emerald-400 flex items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>
-                  {totalCartCount} Item(s) Selected • ₹{grandTotal} (Incl. ₹15 Suraksha Fee)
+        <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:bottom-6 left-3 right-3 sm:left-4 sm:right-4 max-w-2xl mx-auto z-40 animate-slide-up">
+          <div className="rounded-2xl bg-slate-950 text-white p-3.5 sm:p-4 shadow-elevated border-2 border-emerald-400 flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 truncate">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span className="truncate">
+                  {totalCartCount} Item(s) • ₹{grandTotal} (Incl. ₹15 Cover)
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300 mt-0.5">
+              <p className="text-[10px] sm:text-[11px] text-slate-300 mt-0.5 truncate">
                 {isHi ? '30-मिनट तत्काल डिस्पैच उपलब्ध' : 'Instant 30-min technician dispatch to your door'}
               </p>
             </div>
 
             <button
               onClick={() => setShowRadarModal(true)}
-              className="btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 px-5 text-xs rounded-xl shadow-soft flex items-center gap-1.5 shrink-0 active:scale-95 transition-transform"
+              className="btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-2.5 sm:py-3 px-4 sm:px-5 text-xs rounded-xl shadow-soft flex items-center gap-1.5 shrink-0 active:scale-95 transition-transform min-h-[44px]"
             >
               <Zap className="h-4 w-4 fill-slate-950" />
               <span>{isHi ? 'तत्काल बुक करें' : 'Dispatch Now'}</span>
