@@ -144,19 +144,30 @@ export default function Homepage() {
     document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // ── Carousel auto-advance ─────────────────────────────────────────────────
+  // Uses container.scrollTo() instead of child.scrollIntoView() so the page's
+  // vertical scroll position is NEVER affected when slides change.
   const scrollTo = useCallback((idx: number) => {
     const next = (idx + OFFER_BANNERS.length) % OFFER_BANNERS.length;
     setBannerIdx(next);
     if (carouselRef.current) {
-      const child = carouselRef.current.children[next] as HTMLElement;
-      child?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+      const slideWidth = carouselRef.current.offsetWidth;
+      carouselRef.current.scrollTo({ left: slideWidth * next, behavior: 'smooth' });
     }
   }, []);
 
   useEffect(() => {
-    autoRef.current = setInterval(() => scrollTo(bannerIdx + 1), 4000);
+    autoRef.current = setInterval(() => {
+      setBannerIdx((prev) => {
+        const next = (prev + 1) % OFFER_BANNERS.length;
+        if (carouselRef.current) {
+          const slideWidth = carouselRef.current.offsetWidth;
+          carouselRef.current.scrollTo({ left: slideWidth * next, behavior: 'smooth' });
+        }
+        return next;
+      });
+    }, 4000);
     return () => { if (autoRef.current) clearInterval(autoRef.current); };
-  }, [bannerIdx, scrollTo]);
+  }, []); // ← empty deps: interval set once, uses setBannerIdx functional form — no stale closure
 
   const liveCount = filteredWorkers.length;
   const availText = liveCount > 0
@@ -196,125 +207,210 @@ export default function Homepage() {
         <div className="absolute -left-12 bottom-0 h-56 w-56 rounded-full bg-sky-400/15 blur-3xl pointer-events-none" />
 
         <div className="relative mx-auto max-w-6xl px-4 pt-6 pb-8 sm:pt-10 sm:pb-12 w-full min-w-0">
+          {/* ── 2-col desktop layout ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-8 lg:gap-12">
 
-          {/* ── Live Status Pill ── */}
-          <div className="flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-1.5 text-[11px] sm:text-xs font-semibold w-fit max-w-full min-w-0 mb-4 overflow-hidden">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span className="truncate min-w-0 text-white/90">{availText}</span>
-          </div>
-
-          {/* ── Hero Heading ── */}
-          <h1 className="font-display text-[1.65rem] sm:text-4xl lg:text-5xl font-black leading-[1.12] tracking-tight text-white text-balance pr-2">
-            {isHi ? 'घर के लिए भरोसेमंद\nमददगार खोजें' : 'Find Trusted Helpers\nfor Your Home'}
-          </h1>
-          <p className="mt-2.5 text-sm sm:text-base text-white/75 leading-relaxed max-w-sm sm:max-w-md font-normal pr-2">
-            {isHi
-              ? 'सत्यापित रसोइया, सफाईकर्मी, इलेक्ट्रीशियन — केवल ₹10 शुल्क'
-              : 'Verified cooks, cleaners, electricians & more — just ₹10 fee, 0% helper commission'}
-          </p>
-
-          {/* ── Search Card ── */}
-          <div className="mt-5 sm:mt-7 rounded-2xl bg-white p-2.5 shadow-2xl ring-1 ring-slate-200/60 w-full max-w-lg min-w-0">
-            {/* Location Row */}
-            <div className="flex items-center gap-2 px-1 mb-2">
-              <MapPin className="h-3.5 w-3.5 text-brand-500 shrink-0" />
-              <span className="text-[11px] font-semibold text-slate-500 truncate min-w-0">
-                {city.replace(' (Coming Soon)', '')}
-              </span>
-              <span className="ml-auto text-[10px] font-bold text-emerald-600 flex items-center gap-1 shrink-0">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                {isHi ? 'लाइव सेवा' : 'Live Service'}
-              </span>
-            </div>
-
-            {/* Search Input Row */}
-            <div className="flex gap-2 min-w-0">
-              <div className="relative flex-1 min-w-0">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder={isHi ? 'रसोइया, सफाईकर्मी, इलेक्ट्रीशियन...' : 'Search cook, maid, electrician...'}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition min-w-0"
-                />
+            {/* ── LEFT COLUMN: text + search + CTA ── */}
+            <div className="min-w-0">
+              {/* Live Status Pill */}
+              <div className="flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-1.5 text-[11px] sm:text-xs font-semibold w-fit max-w-full min-w-0 mb-4 overflow-hidden">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="truncate min-w-0 text-white/90">{availText}</span>
               </div>
-              <button
-                onClick={handleSearch}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white px-4 py-3 text-sm font-bold shadow-md transition-all"
-              >
-                <Search className="h-4 w-4" />
-                <span className="hidden xs:inline">{isHi ? 'खोजें' : 'Search'}</span>
-              </button>
-            </div>
 
-            {/* Suggested Chips */}
-            <div className="mt-2.5 flex flex-wrap gap-1.5 min-w-0">
-              <span className="text-[10px] font-bold text-slate-400 self-center shrink-0">
-                {isHi ? 'सुझाव:' : 'Try:'}
-              </span>
-              {CHIPS.map((chip) => (
+              {/* Hero Heading */}
+              <h1 className="font-display text-[1.65rem] sm:text-4xl lg:text-5xl font-black leading-[1.12] tracking-tight text-white text-balance pr-2">
+                {isHi ? 'घर के लिए भरोसेमंद\nमददगार खोजें' : 'Find Trusted Helpers\nfor Your Home'}
+              </h1>
+              <p className="mt-2.5 text-sm sm:text-base text-white/75 leading-relaxed max-w-sm sm:max-w-md font-normal pr-2">
+                {isHi
+                  ? 'सत्यापित रसोइया, सफाईकर्मी, इलेक्ट्रीशियन — केवल ₹10 शुल्क'
+                  : 'Verified cooks, cleaners, electricians & more — just ₹10 fee, 0% helper commission'}
+              </p>
+
+              {/* Search Card */}
+              <div className="mt-5 sm:mt-7 rounded-2xl bg-white p-2.5 shadow-2xl ring-1 ring-slate-200/60 w-full max-w-lg min-w-0">
+                {/* Location Row */}
+                <div className="flex items-center gap-2 px-1 mb-2">
+                  <MapPin className="h-3.5 w-3.5 text-brand-500 shrink-0" />
+                  <span className="text-[11px] font-semibold text-slate-500 truncate min-w-0">
+                    {city.replace(' (Coming Soon)', '')}
+                  </span>
+                  <span className="ml-auto text-[10px] font-bold text-emerald-600 flex items-center gap-1 shrink-0">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                    {isHi ? 'लाइव सेवा' : 'Live Service'}
+                  </span>
+                </div>
+
+                {/* Search Input Row */}
+                <div className="flex gap-2 min-w-0">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                      placeholder={isHi ? 'रसोइया, सफाईकर्मी, इलेक्ट्रीशियन...' : 'Search cook, maid, electrician...'}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition min-w-0"
+                    />
+                  </div>
+                  <button
+                    onClick={handleSearch}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white px-4 py-3 text-sm font-bold shadow-md transition-all"
+                  >
+                    <Search className="h-4 w-4" />
+                    <span className="hidden xs:inline">{isHi ? 'खोजें' : 'Search'}</span>
+                  </button>
+                </div>
+
+                {/* Suggested Chips */}
+                <div className="mt-2.5 flex flex-wrap gap-1.5 min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 self-center shrink-0">
+                    {isHi ? 'सुझाव:' : 'Try:'}
+                  </span>
+                  {CHIPS.map((chip) => (
+                    <button
+                      key={chip.text}
+                      type="button"
+                      onClick={() => { setFilter(chip.filterKey as ServiceId); setQuery(''); handleSearch(); }}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 active:scale-95 text-slate-600 text-[11px] font-medium border border-slate-200 hover:border-brand-200 transition-all break-words"
+                    >
+                      {chip.text}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* SOS CTA Strip */}
+              <div className="mt-5 flex flex-wrap gap-3 items-center min-w-0">
                 <button
-                  key={chip.text}
                   type="button"
-                  onClick={() => { setFilter(chip.filterKey as ServiceId); setQuery(''); handleSearch(); }}
-                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-700 active:scale-95 text-slate-600 text-[11px] font-medium border border-slate-200 hover:border-brand-200 transition-all break-words"
+                  onClick={() => setShowSosModal(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black px-4 py-2.5 text-xs sm:text-sm shadow-lg transition-all min-h-[44px] max-w-full"
                 >
-                  {chip.text}
+                  <Zap className="h-4 w-4 fill-slate-950 animate-bounce shrink-0" />
+                  <span className="leading-tight">{isHi ? '🚨 30 मिनट — अर्जेंट बुकिंग' : '🚨 30-Min Emergency Booking'}</span>
                 </button>
-              ))}
+
+                {/* Trust micro-badges */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] font-semibold text-white/70">
+                  <span className="flex items-center gap-1 shrink-0"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />{isHi ? 'आधार सत्यापित' : 'Aadhaar Verified'}</span>
+                  <span className="flex items-center gap-1 shrink-0"><Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400 shrink-0" />{isHi ? '4.85★ रेटिंग' : '4.85★ Rated'}</span>
+                  <span className="flex items-center gap-1 shrink-0"><Zap className="h-3.5 w-3.5 text-sky-400 shrink-0" />{isHi ? '₹10 शुल्क' : '₹10 Fee'}</span>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* ── SOS CTA Strip ── */}
-          <div className="mt-5 flex flex-wrap gap-3 items-center min-w-0">
-            <button
-              type="button"
-              onClick={() => setShowSosModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black px-4 py-2.5 text-xs sm:text-sm shadow-lg transition-all min-h-[44px] max-w-full"
-            >
-              <Zap className="h-4 w-4 fill-slate-950 animate-bounce shrink-0" />
-              <span className="leading-tight">{isHi ? '🚨 30 मिनट — अर्जेंट बुकिंग' : '🚨 30-Min Emergency Booking'}</span>
-            </button>
+            {/* ── RIGHT COLUMN: hero illustration (desktop only) ── */}
+            <div className="hidden lg:flex items-center justify-center relative select-none pointer-events-none">
+              {/* Main illustration card */}
+              <div className="relative w-full max-w-sm">
+                {/* Background glow */}
+                <div className="absolute inset-0 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10" />
 
-            {/* Trust micro-badges */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] font-semibold text-white/70">
-              <span className="flex items-center gap-1 shrink-0"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />{isHi ? 'आधार सत्यापित' : 'Aadhaar Verified'}</span>
-              <span className="flex items-center gap-1 shrink-0"><Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400 shrink-0" />{isHi ? '4.85★ रेटिंग' : '4.85★ Rated'}</span>
-              <span className="flex items-center gap-1 shrink-0"><Zap className="h-3.5 w-3.5 text-sky-400 shrink-0" />{isHi ? '₹10 शुल्क' : '₹10 Fee'}</span>
+                {/* Central icon hub */}
+                <div className="relative z-10 p-8 flex flex-col items-center gap-5">
+                  {/* Top row of service icons */}
+                  <div className="flex gap-4">
+                    {[
+                      { icon: ChefHat,    label: isHi ? 'रसोइया' : 'Cook',        bg: 'from-orange-400 to-amber-500',  glow: '#f97316' },
+                      { icon: Sparkles,   label: isHi ? 'सफाई' : 'Maid',          bg: 'from-sky-400 to-blue-500',      glow: '#0ea5e9' },
+                      { icon: Zap,        label: isHi ? 'इलेक्ट्रीशियन' : 'Electrician', bg: 'from-amber-400 to-yellow-500', glow: '#f59e0b' },
+                    ].map(({ icon: Icon, label, bg, glow }) => (
+                      <div key={label} className="flex flex-col items-center gap-2">
+                        <div
+                          className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${bg} flex items-center justify-center shadow-xl`}
+                          style={{ boxShadow: `0 12px 32px -6px ${glow}66` }}
+                        >
+                          <Icon className="h-7 w-7 text-white" />
+                        </div>
+                        <span className="text-[11px] font-bold text-white/80">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Center trust badge */}
+                  <div className="flex items-center gap-3 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 px-5 py-3.5 shadow-lg">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-400/20 border border-emerald-400/30 flex items-center justify-center">
+                      <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-white leading-tight">{isHi ? 'आधार सत्यापित' : 'Aadhaar Verified'}</p>
+                      <p className="text-[10px] text-white/60 mt-0.5">{isHi ? 'हर मददगार की जाँच' : 'Every helper background-checked'}</p>
+                    </div>
+                  </div>
+
+                  {/* Bottom row of service icons */}
+                  <div className="flex gap-4">
+                    {[
+                      { icon: Wrench,     label: isHi ? 'प्लंबर' : 'Plumber',   bg: 'from-blue-500 to-indigo-600',  glow: '#3b82f6' },
+                      { icon: Users,      label: isHi ? 'ऑल-राउंडर' : 'All-Rounder', bg: 'from-emerald-500 to-teal-600', glow: '#10b981' },
+                      { icon: Hammer,     label: isHi ? 'बढ़ई' : 'Carpenter',  bg: 'from-amber-700 to-yellow-800', glow: '#b45309' },
+                    ].map(({ icon: Icon, label, bg, glow }) => (
+                      <div key={label} className="flex flex-col items-center gap-2">
+                        <div
+                          className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${bg} flex items-center justify-center shadow-xl`}
+                          style={{ boxShadow: `0 12px 32px -6px ${glow}66` }}
+                        >
+                          <Icon className="h-7 w-7 text-white" />
+                        </div>
+                        <span className="text-[11px] font-bold text-white/80">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Floating rating badge */}
+                  <div className="flex items-center gap-2 rounded-full bg-amber-400/20 border border-amber-400/30 px-4 py-2">
+                    <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
+                    <span className="text-sm font-black text-white">4.85</span>
+                    <span className="text-[11px] text-white/60">{isHi ? 'औसत रेटिंग' : 'Avg Rating'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating accent cards */}
+              <div className="absolute -top-4 -right-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-2 shadow-lg">
+                <p className="text-[10px] font-black text-white/90">₹10 Platform Fee</p>
+                <p className="text-[9px] text-white/50">0% commission to helpers</p>
+              </div>
+              <div className="absolute -bottom-4 -left-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-2 shadow-lg">
+                <p className="text-[10px] font-black text-white/90">⚡ &lt;30-Min Response</p>
+                <p className="text-[9px] text-white/50">Live in Deoria, Eastern UP</p>
+              </div>
             </div>
-          </div>
 
+          </div>{/* end grid */}
         </div>
       </section>
 
       {/* ════════════════ OFFER BANNER CAROUSEL ════════════════ */}
       <section className="mx-auto max-w-6xl px-4 mt-5 w-full min-w-0 overflow-hidden">
-        <div className="relative min-w-0 overflow-hidden">
-          {/* Slides */}
+        <div className="relative min-w-0">
+
+          {/* ── Slides track ── overflow:hidden clips slides cleanly */}
           <div
             ref={carouselRef}
-            className="flex overflow-x-auto no-scrollbar rounded-2xl min-w-0"
-            style={{ scrollSnapType: 'x mandatory', gap: 0 }}
+            className="flex overflow-x-hidden no-scrollbar rounded-2xl"
+            style={{ scrollSnapType: 'x mandatory', scrollBehavior: 'smooth' }}
           >
-            {OFFER_BANNERS.map((b, i) => (
+            {OFFER_BANNERS.map((b) => (
               <div
                 key={b.id}
                 style={{ scrollSnapAlign: 'start', minWidth: '100%', maxWidth: '100%' }}
-                className={`relative flex-shrink-0 w-full rounded-2xl bg-gradient-to-r ${b.bg} p-4 sm:p-5 overflow-hidden cursor-pointer select-none`}
-                onClick={() => scrollTo(i + 1)}
+                className={`relative flex-shrink-0 w-full rounded-2xl bg-gradient-to-r ${b.bg} overflow-hidden`}
               >
                 {/* Decorative blobs inside slide */}
                 <div className={`absolute right-0 top-0 h-32 w-32 rounded-full ${b.blob1} blur-2xl pointer-events-none`} />
                 <div className={`absolute -left-8 bottom-0 h-24 w-24 rounded-full ${b.blob2} blur-2xl pointer-events-none`} />
 
-                <div className="relative z-10 flex items-center justify-between gap-3 min-w-0">
-                  <div className="min-w-0">
+                {/* Inner content — px-10 gives room so arrows never overlap text */}
+                <div className="relative z-10 flex items-center justify-between gap-4 px-10 py-5 sm:py-6 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black tracking-widest text-white uppercase mb-2">
                       <span>{b.icon}</span>
                       <span>{b.label}</span>
                     </div>
-                    <h3 className="font-display font-black text-white text-sm sm:text-lg leading-tight break-words">
+                    <h3 className="font-display font-black text-white text-sm sm:text-lg leading-tight">
                       {b.title}
                     </h3>
                     <p className="mt-1 text-[11px] sm:text-xs text-white/80 leading-relaxed max-w-xs">
@@ -324,22 +420,24 @@ export default function Homepage() {
                       {b.cta} <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="text-4xl sm:text-5xl shrink-0 opacity-90">{b.icon}</div>
+                  <div className="text-4xl sm:text-5xl shrink-0 opacity-90 pr-1">{b.icon}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Prev / Next Arrows */}
+          {/* ── Nav arrows — outside the slides, flush on the wrapper edges ── */}
           <button
             onClick={() => scrollTo(bannerIdx - 1)}
-            className="absolute left-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center hover:bg-white transition-all"
+            className="absolute left-1 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-white/85 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white active:scale-90 transition-all"
+            aria-label="Previous slide"
           >
             <ChevronLeft className="h-4 w-4 text-slate-700" />
           </button>
           <button
             onClick={() => scrollTo(bannerIdx + 1)}
-            className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center hover:bg-white transition-all"
+            className="absolute right-1 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-white/85 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white active:scale-90 transition-all"
+            aria-label="Next slide"
           >
             <ChevronRight className="h-4 w-4 text-slate-700" />
           </button>
@@ -351,6 +449,7 @@ export default function Homepage() {
                 key={i}
                 onClick={() => scrollTo(i)}
                 className={`rounded-full transition-all ${i === bannerIdx ? 'w-5 h-1.5 bg-brand-600' : 'w-1.5 h-1.5 bg-slate-300'}`}
+                aria-label={`Go to slide ${i + 1}`}
               />
             ))}
           </div>
