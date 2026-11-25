@@ -244,3 +244,20 @@ export interface Testimonial {
   date: string;
   verifiedCustomer: boolean;
 }
+
+export type VerificationStatus = 'unsubmitted' | 'pending' | 'verified' | 'rejected';
+
+export interface HelperVerification {
+  id?: string;
+  helper_id: string;               // Supabase auth user UUID
+  aadhaar_last4: string;           // ONLY last 4 digits — NEVER full 12-digit Aadhaar
+  aadhaar_front_path: string | null;
+  aadhaar_back_path: string | null;
+  selfie_path: string | null;
+  verification_status: VerificationStatus;
+  rejection_reason: string | null;
+  submitted_at: string | null;
+  verified_at: string | null;
+  helper_name?: string;            // denormalized for admin list view
+  helper_phone?: string;
+}

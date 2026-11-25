@@ -36,6 +36,7 @@ interface AppState {
   workers: Worker[];
   toggleWorkerOnline: (id: string) => void;
   toggleWorkerVerified: (id: string) => void;
+  setWorkerVerified: (idOrPhone: string, verified: boolean) => void;
   bookings: Booking[];
   addBooking: (b: Booking) => void;
   cancelBooking: (id: string) => void;
@@ -157,6 +158,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const setWorkerVerified = (idOrPhone: string, verified: boolean) => {
+    setWorkers((prev) => {
+      const updated = prev.map((w) => {
+        const matches =
+          w.id === idOrPhone ||
+          (w.phone && idOrPhone && w.phone.replace(/\D/g, '').endsWith(idOrPhone.replace(/\D/g, '').slice(-10))) ||
+          (w.name && idOrPhone && w.name.toLowerCase() === idOrPhone.toLowerCase());
+        return matches ? { ...w, verified, isRealPartner: verified ? true : w.isRealPartner } : w;
+      });
+      try {
+        const liveOnly = updated.filter((x) => x.isRealPartner || x.id.startsWith('w_live_'));
+        localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(liveOnly));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+  };
+
   const addBooking = (b: Booking) => setBookings((prev) => [b, ...prev]);
 
   const cancelBooking = (id: string) =>
@@ -201,6 +221,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       workers,
       toggleWorkerOnline,
       toggleWorkerVerified,
+      setWorkerVerified,
       bookings,
       addBooking,
       cancelBooking,

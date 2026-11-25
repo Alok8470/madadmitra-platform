@@ -108,4 +108,20 @@ html, body {
   .text-balance {
     text-wrap: balance;
   }
+  /* Carousel snap */
+  .snap-x-mandatory {
+    scroll-snap-type: x mandatory;
+  }
+  .snap-start {
+    scroll-snap-align: start;
+  }
+  /* Hero shape bottom curve */
+  .hero-clip {
+    border-bottom-left-radius: 2.5rem;
+    border-bottom-right-radius: 2.5rem;
+  }
+  /* Service card icon glow */
+  .icon-glow {
+    box-shadow: 0 8px 24px -4px var(--glow-color, rgba(59,130,246,0.35));
+  }
 }

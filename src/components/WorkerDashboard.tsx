@@ -22,6 +22,7 @@ import { SERVICE_LABELS } from '../data/mockData';
 import type { Booking, Worker } from '../types';
 import AudioJobAlert from './AudioJobAlert';
 import Modal from './Modal';
+import AadhaarVerificationCard from './AadhaarVerificationCard';
 
 export default function WorkerDashboard() {
   const { workers, toggleWorkerOnline, bookings, addBooking, cancelBooking, setView, currentUser, openAuthModal } = useApp();
@@ -674,6 +675,14 @@ export default function WorkerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* OFFICIAL MANUAL AADHAAR VERIFICATION CARD */}
+      <AadhaarVerificationCard
+        userId={currentUser?.id || me.id}
+        helperName={currentUser?.fullName || me.name}
+        helperPhone={currentUser?.phone || me.phone || ''}
+        language={language}
+      />
 
       {/* LOCAL HARDWARE KENDRA GUARANTOR BADGE */}
       <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/60 p-5 shadow-sm">

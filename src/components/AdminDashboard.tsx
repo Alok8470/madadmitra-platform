@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { SERVICE_LABELS } from '../data/mockData';
+import AdminVerificationPanel from './AdminVerificationPanel';
 
 interface RefundClaim {
   id: string;
@@ -36,7 +37,7 @@ export default function AdminDashboard() {
     setCatalogMode,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'workers' | 'bookings' | 'refunds'>('workers');
+  const [activeTab, setActiveTab] = useState<'workers' | 'aadhaar' | 'bookings' | 'refunds'>('workers');
   const [searchQuery, setSearchQuery] = useState('');
   const [refundClaims, setRefundClaims] = useState<RefundClaim[]>([]);
 
@@ -221,6 +222,21 @@ export default function AdminDashboard() {
           <span>Worker KYC & Approvals</span>
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
             {workers.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('aadhaar')}
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-all ${
+            activeTab === 'aadhaar'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <ShieldCheck className="h-4 w-4" />
+          <span>Aadhaar Document Review</span>
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+            Secure Docs
           </span>
         </button>
 
@@ -515,6 +531,13 @@ export default function AdminDashboard() {
             ))}
           </div>
         )
+      )}
+
+      {/* TAB: AADHAAR DOCUMENT VERIFICATION */}
+      {activeTab === 'aadhaar' && (
+        <div className="mt-6">
+          <AdminVerificationPanel />
+        </div>
       )}
     </div>
   );
