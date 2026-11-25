@@ -409,6 +409,61 @@ export const SERVICE_SKUS: ServiceItemSKU[] = [
     included: ['Wall scraping and emery sanding', 'Waterproof putty application', '2-coat color match'],
     excluded: ['Cost of exterior terrace waterproofing'],
   },
+
+  // All-Rounder Domestic Helper SKUs
+  {
+    id: 'sku_all_halfday',
+    serviceId: 'all-rounder',
+    title: 'Half-Day Domestic Relief (Morning or Evening 4-Hr Shift)',
+    titleHi: 'हाफ-डे घरेलू राहत (सुबह या शाम 4 घंटे की शिफ्ट)',
+    description: 'Complete home relief: fresh meal preparation, full house sweeping-mopping, and dishwashing.',
+    descriptionHi: 'सम्पूर्ण घरेलू राहत: ताज़ा भोजन, झाड़ू-पोछा और बर्तनों की सफाई।',
+    price: 399,
+    timeEstimateMins: 240,
+    included: ['Fresh 2-meal cooking', 'Full house floor mopping', 'Dishes washing & kitchen sink clean'],
+    excluded: ['Laundry / Ironing (available as add-on)'],
+    badge: 'Best Value',
+  },
+  {
+    id: 'sku_all_fullday',
+    serviceId: 'all-rounder',
+    title: 'Full-Day Dedicated Home Helper (8-Hr Shift)',
+    titleHi: 'फुल-डे समर्पित घरेलू सहायक (8 घंटे की शिफ्ट)',
+    description: 'Full day domestic assistant for breakfast, lunch, daily cleaning, dusting, and household errands.',
+    descriptionHi: 'पूरे दिन का घरेलू सहायक: नाश्ता, दोपहर का खाना, डस्टिंग और घरेलू काम।',
+    price: 699,
+    timeEstimateMins: 480,
+    included: ['Breakfast + Lunch + Tea preparation', 'Dusting, sweeping & mopping', 'Continuous kitchen support'],
+    excluded: ['Heavy construction or garden lifting'],
+    badge: 'Popular for Guests',
+  },
+
+  // Tag-Team Combo SKUs
+  {
+    id: 'sku_tag_express',
+    serviceId: 'tag-team',
+    title: 'Express 1-Hour Power Combo (1 Cook + 1 Cleaner)',
+    titleHi: 'एक्सप्रेस 1-घंटा पावर कॉम्बो (1 कुक + 1 क्लीनर)',
+    description: 'Two verified helpers arrive together: Cook prepares fresh hot meal while Cleaner sweeps & washes dishes.',
+    descriptionHi: 'दो सहायक एक साथ: कुक ताज़ा खाना बनाएगा और क्लीनर घर व बर्तनों की सफाई करेगा।',
+    price: 599,
+    timeEstimateMins: 60,
+    included: ['Simultaneous cooking and cleaning', 'Double speed completion', 'Complete kitchen wipe-down'],
+    excluded: ['Grocery procurement'],
+    badge: 'Double Speed',
+  },
+  {
+    id: 'sku_tag_festival',
+    serviceId: 'tag-team',
+    title: 'Festive / Party Deep Overhaul (2 Helpers for 3 Hours)',
+    titleHi: 'त्योहार व दावत तैयारी (2 सहायक, 3 घंटे)',
+    description: 'Special gathering preparation: party snack & main course cooking plus intensive room & terrace scrubbing.',
+    descriptionHi: 'दावत या त्योहार की तैयारी: मेहमानों के लिए पकवान और घर की गहन सफाई।',
+    price: 899,
+    timeEstimateMins: 180,
+    included: ['Large batch meal preparation', 'Full deep floor scrubbing & dusting', 'Serving & utensil cleanup assistance'],
+    excluded: ['Ingredients and party disposable supplies'],
+  },
 ];
 
 // GENUINE HARDWARE STORE SPARE PARTS CATALOG (ZERO UNAUTHORIZED MARKUPS)

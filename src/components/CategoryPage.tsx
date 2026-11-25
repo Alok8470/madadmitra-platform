@@ -13,19 +13,26 @@ import {
   Wrench,
   Store,
   Zap,
+  Sparkles,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
-import { SERVICES, SERVICE_SKUS, HARDWARE_PARTS, type Worker } from '../data/mockData';
+import { SERVICES, SERVICE_SKUS, HARDWARE_PARTS, type Worker, type ServiceSku } from '../data/mockData';
 import DispatchRadarModal from './DispatchRadarModal';
 import MadadSurakshaModal from './MadadSurakshaModal';
+
+type PlanFrequency = 'one_time' | 'weekly' | 'monthly';
 
 export default function CategoryPage() {
   const { workers, city, selectedCategory, setView, setSelectedWorker, catalogMode } = useApp();
   const { language } = useLanguage();
   const isHi = language === 'hi';
 
+  const isRepairCategory = ['electrician', 'plumber', 'carpenter', 'painter'].includes(selectedCategory || '');
+  const isSubscriptionCategory = selectedCategory === 'cook' || selectedCategory === 'cleaner';
+
   const [activeTab, setActiveTab] = useState<'rate_card' | 'workers' | 'parts'>('rate_card');
+  const [planFrequency, setPlanFrequency] = useState<PlanFrequency>('one_time');
   const [selectedSkus, setSelectedSkus] = useState<Record<string, number>>({});
   const [selectedParts, setSelectedParts] = useState<Record<string, number>>({});
   const [expandedSku, setExpandedSku] = useState<string | null>(null);
@@ -45,6 +52,47 @@ export default function CategoryPage() {
     if (!selectedCategory) return [];
     return HARDWARE_PARTS.filter((p) => p.serviceId === selectedCategory);
   }, [selectedCategory]);
+
+  // Adjust SKU for selected frequency (applicable to Cook & Cleaner)
+  const getAdjustedSku = (sku: ServiceSku, freq: PlanFrequency) => {
+    if (!isSubscriptionCategory || freq === 'one_time') {
+      return {
+        ...sku,
+        displayPrice: sku.price,
+        unitSuffix: isSubscriptionCategory ? '/ visit' : '',
+        displayBadge: sku.badge,
+        guaranteeText: isRepairCategory ? '7-Day Rework Guarantee' : '100% Satisfaction Guarantee',
+        displayDescription: isHi ? sku.descriptionHi : sku.description,
+      };
+    }
+
+    if (freq === 'weekly') {
+      const weeklyPrice = Math.round(sku.price * 6);
+      return {
+        ...sku,
+        displayPrice: weeklyPrice,
+        unitSuffix: '/ 7 days',
+        displayBadge: 'Weekly Pack (Save 15%)',
+        guaranteeText: 'Substitute Backup Guarantee',
+        displayDescription: isHi
+          ? 'लगातार 7 दिनों के लिए दैनिक सेवा पैकेज। अनुपस्थिति पर निःशुल्क वैकल्पिक सहायक।'
+          : 'Daily service for 7 consecutive days. Includes substitute helper backup if your primary helper is on leave.',
+      };
+    }
+
+    // Monthly (~20x daily rate: 25 days coverage, save ~35%)
+    const monthlyPrice = Math.round(sku.price * 20);
+    return {
+      ...sku,
+      displayPrice: monthlyPrice,
+      unitSuffix: '/ month',
+      displayBadge: 'Monthly Pass (Save ~35%)',
+      guaranteeText: 'Free Replacement & Backup Guarantee',
+      displayDescription: isHi
+        ? 'पूरे महीने की सदस्यता (25 कार्य दिवस)। समर्पित सत्यापित सहायक और छुट्टी के दिनों में निःशुल्क बैकअप।'
+        : 'Full month subscription (25 working days). Dedicated verified helper with guaranteed free replacements on leave days.',
+    };
+  };
 
   // Available Workers
   const filteredWorkers = useMemo(() => {
@@ -78,9 +126,11 @@ export default function CategoryPage() {
   const skuTotal = useMemo(() => {
     return Object.entries(selectedSkus).reduce((acc, [skuId, qty]) => {
       const sku = categorySkus.find((s) => s.id === skuId);
-      return acc + (sku ? sku.price * qty : 0);
+      if (!sku) return acc;
+      const adjusted = getAdjustedSku(sku, planFrequency);
+      return acc + adjusted.displayPrice * qty;
     }, 0);
-  }, [selectedSkus, categorySkus]);
+  }, [selectedSkus, categorySkus, planFrequency, isSubscriptionCategory]);
 
   const partsTotal = useMemo(() => {
     return Object.entries(selectedParts).reduce((acc, [partId, qty]) => {
@@ -171,27 +221,27 @@ export default function CategoryPage() {
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-md px-3 py-1 text-xs font-bold text-white border border-white/25">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
-              {isHi ? '100% स्थानीय हार्डवेयर गारंटी' : 'Vouched by Local Hardware Partner'}
+              {isRepairCategory
+                ? (isHi ? '100% स्थानीय हार्डवेयर गारंटी' : 'Vouched by Local Hardware Partner')
+                : (isHi ? '100% पृष्ठभूमि सत्यापित' : 'Verified Domestic Helper')}
             </span>
-            <button
-              onClick={() => setShowSurakshaModal(true)}
-              className="text-[11px] underline font-bold text-white hover:text-amber-200"
-            >
-              ₹10,000 Madad Suraksha &rarr;
-            </button>
           </div>
           <h1 className="font-display text-xl sm:text-4xl font-black tracking-tight text-white">
             {categoryData.title}
           </h1>
           <p className="mt-2 text-white/90 text-xs sm:text-sm leading-relaxed font-medium">
             {isHi
-              ? 'बिना किसी ऑन-साइट मोलभाव के पारदर्शी दरें। 0% कमीशन पर प्रशिक्षित स्थानीय कारीगर।'
-              : 'Standardized rate card with zero on-site haggling. 100% verified technicians backed by neighborhood store guarantees.'}
+              ? (isRepairCategory
+                  ? 'बिना किसी ऑन-साइट मोलभाव के पारदर्शी दरें। 0% कमीशन पर प्रमाणित स्थानीय कारीगर।'
+                  : 'बिना किसी ऑन-साइट मोलभाव के पारदर्शी दरें। 100% आधार सत्यापित एवं प्रशिक्षित घरेलू सहायक।')
+              : (isRepairCategory
+                  ? 'Standardized rate card with zero on-site haggling. 100% verified technicians backed by neighborhood store guarantees.'
+                  : 'Standardized rate card with zero on-site haggling. 100% background-verified professionals for your home.')}
           </p>
         </div>
       </div>
 
-      {/* SUB-TABS: Rate Card vs Verified Technicians vs Spare Parts */}
+      {/* SUB-TABS: Rate Card vs Verified Pros vs Spare Parts */}
       <div className="flex border-b border-slate-200 mb-6 gap-2 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x w-full max-w-full">
         <button
           onClick={() => setActiveTab('rate_card')}
@@ -201,7 +251,7 @@ export default function CategoryPage() {
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          <Wrench className="h-4 w-4" />
+          {isRepairCategory ? <Wrench className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
           <span>{isHi ? '📋 मानक रेट कार्ड व टास्क मेन्यू' : '📋 Standard Rate Card & Tasks'}</span>
           <span className="rounded-full bg-brand-100 text-brand-800 text-[10px] px-2 py-0.2">
             {categorySkus.length}
@@ -217,7 +267,11 @@ export default function CategoryPage() {
           }`}
         >
           <ShieldCheck className="h-4 w-4" />
-          <span>{isHi ? '👷 सत्यापित कारीगर सूची' : '👷 Verified Local Pros'}</span>
+          <span>
+            {isHi
+              ? (isRepairCategory ? '👷 सत्यापित कारीगर सूची' : '🤝 सत्यापित सहायक सूची')
+              : (isRepairCategory ? '👷 Verified Local Pros' : '🤝 Verified Local Helpers')}
+          </span>
           <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.2">
             {filteredWorkers.length}
           </span>
@@ -241,10 +295,10 @@ export default function CategoryPage() {
         )}
       </div>
 
-      {/* TAB 1: STANDARDIZED RATE CARD & MENU (BEATS URBAN COMPANY) */}
+      {/* TAB 1: STANDARDIZED RATE CARD & MENU */}
       {activeTab === 'rate_card' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-lg font-black text-slate-950">
                 {isHi ? 'फिक्स्ड रेट टास्क मेन्यू' : 'Transparent Fixed-Price Rate Card'}
@@ -255,17 +309,60 @@ export default function CategoryPage() {
                   : 'Upfront prices down to the rupee. No on-site haggling or surprise extra charges.'}
               </p>
             </div>
-            <button
-              onClick={() => setShowSurakshaModal(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              <span>₹10,000 Protection</span>
-            </button>
+
+            {/* Subscription Frequency Selector for Cooking & Cleaning ONLY */}
+            {isSubscriptionCategory && (
+              <div className="p-1 bg-slate-100 rounded-2xl flex items-center gap-1 border border-slate-200 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setPlanFrequency('one_time')}
+                  className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all ${
+                    planFrequency === 'one_time'
+                      ? 'bg-white text-slate-950 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {isHi ? 'एक बार' : 'One-Time'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlanFrequency('weekly')}
+                  className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    planFrequency === 'weekly'
+                      ? 'bg-brand-600 text-white shadow-soft'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>{isHi ? 'साप्ताहिक (7 दिन)' : 'Weekly (7 Days)'}</span>
+                  <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                    planFrequency === 'weekly' ? 'bg-amber-300 text-slate-950' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    -15%
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlanFrequency('monthly')}
+                  className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    planFrequency === 'monthly'
+                      ? 'bg-brand-600 text-white shadow-soft'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>{isHi ? 'मासिक (25 दिन)' : 'Monthly (25 Days)'}</span>
+                  <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                    planFrequency === 'monthly' ? 'bg-amber-300 text-slate-950' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    -35%
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {categorySkus.map((sku) => {
+              const adjustedSku = getAdjustedSku(sku, planFrequency);
               const qty = selectedSkus[sku.id] || 0;
               const isExpanded = expandedSku === sku.id;
               return (
@@ -278,33 +375,38 @@ export default function CategoryPage() {
                   <div>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        {sku.badge && (
+                        {adjustedSku.displayBadge && (
                           <span className="badge bg-amber-100 text-amber-900 font-extrabold text-[10px] px-2 py-0.5 mb-1.5">
-                            {sku.badge}
+                            {adjustedSku.displayBadge}
                           </span>
                         )}
                         <h3 className="font-display font-extrabold text-slate-950 text-base">
-                          {isHi ? sku.titleHi : sku.title}
+                          {isHi ? adjustedSku.titleHi : adjustedSku.title}
                         </h3>
                         <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3.5 w-3.5 text-slate-400" />
-                            {sku.timeEstimateMins} mins
+                            {adjustedSku.timeEstimateMins} mins
                           </span>
                           <span>•</span>
-                          <span className="text-emerald-700 font-semibold">7-Day Warranty</span>
+                          <span className="text-emerald-700 font-semibold">{adjustedSku.guaranteeText}</span>
                         </div>
                       </div>
 
                       <div className="text-right shrink-0">
                         <span className="font-display text-2xl font-black text-slate-950">
-                          ₹{sku.price}
+                          ₹{adjustedSku.displayPrice}
                         </span>
+                        {adjustedSku.unitSuffix && (
+                          <span className="block text-[10px] text-slate-400 font-bold uppercase">
+                            {adjustedSku.unitSuffix}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-                      {isHi ? sku.descriptionHi : sku.description}
+                      {adjustedSku.displayDescription}
                     </p>
 
                     {/* What's Included Accordion */}
@@ -353,7 +455,9 @@ export default function CategoryPage() {
 
                   {/* Add to Cart Control */}
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-400 font-medium">Standard Fix</span>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      {isRepairCategory ? 'Standard Fix' : 'Standard Service'}
+                    </span>
                     {qty === 0 ? (
                       <button
                         onClick={() => handleAddSku(sku.id)}
@@ -388,12 +492,12 @@ export default function CategoryPage() {
         </div>
       )}
 
-      {/* TAB 2: VERIFIED LOCAL PROS */}
+      {/* TAB 2: VERIFIED LOCAL PROS / HELPERS */}
       {activeTab === 'workers' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-black text-slate-950">
-              Verified {categoryData.title}s in {city} ({filteredWorkers.length})
+              {isRepairCategory ? `Verified ${categoryData.title}s` : `Verified ${categoryData.title} Helpers`} in {city} ({filteredWorkers.length})
             </h2>
             <span className="badge bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
               100% UIDAI KYC
@@ -445,15 +549,24 @@ export default function CategoryPage() {
                         </span>
                         <span className="text-emerald-700 font-bold">{w.jobs} Jobs</span>
                       </div>
-                      <p className="text-[11px] text-emerald-800 font-medium mt-1">
-                        🏪 Vouched by {w.kyc?.kendraGuarantorName || 'Local Store'}
-                      </p>
+                      {isRepairCategory ? (
+                        <p className="text-[11px] text-emerald-800 font-medium mt-1">
+                          🏪 Vouched by {w.kyc?.kendraGuarantorName || 'Local Hardware Store'}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-emerald-800 font-medium mt-1 flex items-center gap-1">
+                          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 inline shrink-0" />
+                          <span>Aadhaar-Verified Domestic Helper</span>
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Visiting Charge</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                        {isRepairCategory ? 'Visiting Charge' : 'Initial Visit Fee'}
+                      </span>
                       <span className="font-extrabold text-slate-900 text-sm">₹{w.pricePerVisit}</span>
                     </div>
                     <span className="text-xs font-bold text-brand-600 group-hover:underline inline-flex items-center gap-1">
@@ -559,7 +672,7 @@ export default function CategoryPage() {
         </div>
       )}
 
-      {/* STICKY BOTTOM FLOATING CART TRAY (CLEARANCE FOR MOBILE BOTTOMNAV) */}
+      {/* STICKY BOTTOM FLOATING CART TRAY */}
       {totalCartCount > 0 && (
         <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 inset-x-0 z-40 px-3 sm:px-4 pointer-events-none animate-slide-up">
           <div className="max-w-2xl mx-auto pointer-events-auto">
@@ -572,7 +685,11 @@ export default function CategoryPage() {
                   </span>
                 </div>
                 <p className="text-[10px] sm:text-[11px] text-slate-300 mt-0.5 truncate">
-                  {isHi ? '30-मिनट तत्काल डिस्पैच उपलब्ध' : 'Instant 30-min technician dispatch to your door'}
+                  {isHi
+                    ? '30-मिनट तत्काल डिस्पैच उपलब्ध'
+                    : isRepairCategory
+                    ? 'Instant 30-min technician dispatch to your door'
+                    : 'Instant 30-min verified helper dispatch to your door'}
                 </p>
               </div>
 

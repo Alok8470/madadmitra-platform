@@ -19,6 +19,11 @@ export const DispatchRadarModal: React.FC<Props> = ({
 }) => {
   const { language } = useLanguage();
   const isHi = language === 'hi';
+  const isRepair = !serviceName.toLowerCase().includes('cook') &&
+    !serviceName.toLowerCase().includes('clean') &&
+    !serviceName.toLowerCase().includes('maid') &&
+    !serviceName.toLowerCase().includes('all-rounder') &&
+    !serviceName.toLowerCase().includes('tag-team');
 
   const [phase, setPhase] = useState<'scanning' | 'assigned' | 'en_route'>('scanning');
   const etaMins = 18;
@@ -98,11 +103,11 @@ export const DispatchRadarModal: React.FC<Props> = ({
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   {phase === 'en_route'
                     ? isHi
-                      ? 'कारीगर रास्ते में है'
-                      : 'Technician En Route'
+                      ? (isRepair ? 'कारीगर रास्ते में है' : 'सहायक रास्ते में है')
+                      : (isRepair ? 'Technician En Route' : 'Helper En Route')
                     : isHi
-                    ? 'कारीगर ने काम स्वीकार किया'
-                    : 'Job Accepted'}
+                    ? (isRepair ? 'कारीगर ने काम स्वीकार किया' : 'सहायक ने काम स्वीकार किया')
+                    : (isRepair ? 'Job Accepted' : 'Helper Assigned')}
                 </span>
                 <h3 className="font-display text-xl font-black text-slate-950 mt-1">
                   {serviceName}
@@ -121,11 +126,11 @@ export const DispatchRadarModal: React.FC<Props> = ({
             <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/50 p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-700 text-white font-extrabold text-xl shadow-soft">
-                  R
+                  {isRepair ? 'R' : 'S'}
                 </div>
                 <div>
                   <h4 className="font-extrabold text-slate-950 text-base flex items-center gap-1.5">
-                    <span>Rajesh Kumar</span>
+                    <span>{isRepair ? 'Rajesh Kumar' : 'Sunita Devi'}</span>
                     <ShieldCheck className="h-4 w-4 text-emerald-600" />
                   </h4>
                   <div className="flex items-center gap-2 text-xs text-slate-600 mt-0.5">
@@ -135,16 +140,22 @@ export const DispatchRadarModal: React.FC<Props> = ({
                     <span>•</span>
                     <span>32 Mohalla Visits</span>
                   </div>
-                  <p className="text-[11px] text-emerald-800 font-semibold mt-0.5">
-                    🏪 Vouched by <strong>Shri Ram Hardware</strong>
-                  </p>
+                  {isRepair ? (
+                    <p className="text-[11px] text-emerald-800 font-semibold mt-0.5">
+                      🏪 Vouched by <strong>Shri Ram Hardware</strong>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-emerald-800 font-semibold mt-0.5">
+                      🛡️ Aadhaar Verified & Community Endorsed
+                    </p>
+                  )}
                 </div>
               </div>
 
               <a
                 href="tel:9837124589"
                 className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-soft transition-colors"
-                title="Call Technician"
+                title={isRepair ? 'Call Technician' : 'Call Helper'}
               >
                 <Phone className="h-5 w-5" />
               </a>
