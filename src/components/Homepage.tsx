@@ -4,6 +4,7 @@ import {
   Star,
   BadgeCheck,
   ShieldCheck,
+  CheckCircle2,
   Clock,
   Zap,
   ChevronLeft,
@@ -168,6 +169,55 @@ export default function Homepage() {
     }, 4000);
     return () => { if (autoRef.current) clearInterval(autoRef.current); };
   }, []); // ← empty deps: interval set once, uses setBannerIdx functional form — no stale closure
+
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // ── Handle Banner CTA actions ─────────────────────────────────────────────
+  const handleBannerAction = (bannerId: string) => {
+    switch (bannerId) {
+      case 'b1': {
+        // Slide 1: Launch offer — copy promo code MADAD0 & scroll to services
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText('MADAD0');
+          }
+        } catch {
+          // fallback
+        }
+        setToastMsg(isHi ? '🎉 प्रोमो कोड MADAD0 लागू हो गया!' : '🎉 Promo code MADAD0 applied!');
+        setTimeout(() => setToastMsg(null), 3500);
+        const servicesEl = document.getElementById('services') || document.getElementById('results');
+        if (servicesEl) {
+          servicesEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        break;
+      }
+      case 'b2': {
+        // Slide 2: Daily Meal Plan — navigate to Cook / Meal Plans
+        if (setSelectedCategory) setSelectedCategory('cook');
+        setFilter('cook');
+        setView('category');
+        break;
+      }
+      case 'b3': {
+        // Slide 3: 30-min urgent dispatch — open emergency modal
+        setShowSosModal(true);
+        break;
+      }
+      case 'b4': {
+        // Slide 4: 0% commission — Join as partner
+        setView('partner-join');
+        break;
+      }
+      default: {
+        const servicesEl = document.getElementById('services') || document.getElementById('results');
+        if (servicesEl) {
+          servicesEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        break;
+      }
+    }
+  };
 
   const liveCount = filteredWorkers.length;
   const availText = liveCount > 0
@@ -390,14 +440,15 @@ export default function Homepage() {
           {/* ── Slides track ── overflow:hidden clips slides cleanly */}
           <div
             ref={carouselRef}
-            className="flex overflow-x-hidden no-scrollbar rounded-2xl"
+            className="flex overflow-x-hidden no-scrollbar rounded-2xl relative z-10"
             style={{ scrollSnapType: 'x mandatory', scrollBehavior: 'smooth' }}
           >
             {OFFER_BANNERS.map((b) => (
               <div
                 key={b.id}
                 style={{ scrollSnapAlign: 'start', minWidth: '100%', maxWidth: '100%' }}
-                className={`relative flex-shrink-0 w-full rounded-2xl bg-gradient-to-r ${b.bg} overflow-hidden`}
+                className={`relative flex-shrink-0 w-full rounded-2xl bg-gradient-to-r ${b.bg} overflow-hidden cursor-pointer select-none`}
+                onClick={() => handleBannerAction(b.id)}
               >
                 {/* Decorative blobs inside slide */}
                 <div className={`absolute right-0 top-0 h-32 w-32 rounded-full ${b.blob1} blur-2xl pointer-events-none`} />
@@ -416,7 +467,14 @@ export default function Homepage() {
                     <p className="mt-1 text-[11px] sm:text-xs text-white/80 leading-relaxed max-w-xs">
                       {b.subtitle}
                     </p>
-                    <button className="mt-3 inline-flex items-center gap-1 rounded-xl bg-white text-slate-900 font-bold text-xs px-3.5 py-2 shadow-sm hover:scale-105 active:scale-95 transition-transform">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBannerAction(b.id);
+                      }}
+                      className="mt-3 relative z-20 cursor-pointer pointer-events-auto inline-flex items-center gap-1.5 rounded-xl bg-white text-slate-900 font-bold text-xs px-4 py-2.5 shadow-md hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all"
+                    >
                       {b.cta} <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -426,29 +484,40 @@ export default function Homepage() {
             ))}
           </div>
 
-          {/* ── Nav arrows — outside the slides, flush on the wrapper edges ── */}
-          <button
-            onClick={() => scrollTo(bannerIdx - 1)}
-            className="absolute left-1 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-white/85 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white active:scale-90 transition-all"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft className="h-4 w-4 text-slate-700" />
-          </button>
-          <button
-            onClick={() => scrollTo(bannerIdx + 1)}
-            className="absolute right-1 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-white/85 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white active:scale-90 transition-all"
-            aria-label="Next slide"
-          >
-            <ChevronRight className="h-4 w-4 text-slate-700" />
-          </button>
+          {/* ── Nav arrows container — pointer-events-none so it never blocks slide content, arrows have pointer-events-auto ── */}
+          <div className="absolute inset-y-0 inset-x-1 flex items-center justify-between pointer-events-none z-30">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                scrollTo(bannerIdx - 1);
+              }}
+              className="pointer-events-auto h-8 w-8 rounded-full bg-white/90 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white active:scale-90 transition-all cursor-pointer"
+              aria-label="Previous slide"
+            >
+              <ChevronLeft className="h-4 w-4 text-slate-700" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                scrollTo(bannerIdx + 1);
+              }}
+              className="pointer-events-auto h-8 w-8 rounded-full bg-white/90 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white active:scale-90 transition-all cursor-pointer"
+              aria-label="Next slide"
+            >
+              <ChevronRight className="h-4 w-4 text-slate-700" />
+            </button>
+          </div>
 
           {/* Dot Indicators */}
-          <div className="flex items-center justify-center gap-1.5 mt-3">
+          <div className="flex items-center justify-center gap-1.5 mt-3 relative z-20">
             {OFFER_BANNERS.map((_, i) => (
               <button
                 key={i}
+                type="button"
                 onClick={() => scrollTo(i)}
-                className={`rounded-full transition-all ${i === bannerIdx ? 'w-5 h-1.5 bg-brand-600' : 'w-1.5 h-1.5 bg-slate-300'}`}
+                className={`rounded-full transition-all cursor-pointer ${i === bannerIdx ? 'w-5 h-1.5 bg-brand-600' : 'w-1.5 h-1.5 bg-slate-300'}`}
                 aria-label={`Go to slide ${i + 1}`}
               />
             ))}
@@ -473,7 +542,7 @@ export default function Homepage() {
       </section>
 
       {/* ════════════════ SERVICE CATEGORIES GRID ════════════════ */}
-      <section className="mx-auto max-w-6xl px-4 mt-7 w-full min-w-0">
+      <section id="services" className="mx-auto max-w-6xl px-4 mt-7 w-full min-w-0">
         <div className="flex items-end justify-between mb-4">
           <div>
             <span className="text-[10px] font-black uppercase tracking-widest text-brand-600">
@@ -728,6 +797,14 @@ export default function Homepage() {
           open={showSosModal}
           onClose={() => setShowSosModal(false)}
         />
+      )}
+
+      {/* ── Floating Toast Notification ── */}
+      {toastMsg && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white px-5 py-3 rounded-full shadow-2xl text-xs sm:text-sm font-bold flex items-center gap-2.5 border border-slate-700/80 backdrop-blur-md animate-fade-in pointer-events-none whitespace-nowrap">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
       )}
     </div>
   );
