@@ -13,6 +13,7 @@ const BookingsView = lazy(() => import('./components/BookingsView'));
 const CustomerDashboard = lazy(() => import('./components/CustomerDashboard'));
 const WorkerProfilePage = lazy(() => import('./components/WorkerProfilePage'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const AdminLoginPage = lazy(() => import('./components/AdminLoginPage'));
 const PartnerJoinPage = lazy(() => import('./components/PartnerJoinPage'));
 const CategoryPage = lazy(() => import('./components/CategoryPage'));
 const WalletPage = lazy(() => import('./components/WalletPage'));
@@ -66,6 +67,7 @@ function Shell() {
             {view === 'worker' && <WorkerDashboard />}
             {view === 'customer' && <CustomerDashboard />}
             {view === 'admin' && <AdminDashboard />}
+            {view === 'admin-login' && <AdminLoginPage />}
             {view === 'partner-join' && <PartnerJoinPage />}
             {view === 'category' && <CategoryPage />}
             {view === 'wallet' && <WalletPage />}

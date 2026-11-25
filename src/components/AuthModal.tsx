@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Lock,
   Sparkles,
-  Building2,
   Briefcase,
   FileText,
   BadgeCheck,
@@ -38,13 +37,14 @@ export default function AuthModal({
   const { language } = useLanguage();
   const { addWorker } = useApp();
 
-  const [role, setRole] = useState<UserRole>(defaultRole);
+  const initialRole: UserRole = defaultRole === 'admin' ? 'customer' : defaultRole;
+  const [role, setRole] = useState<UserRole>(initialRole);
   const [workerMode, setWorkerMode] = useState<'login' | 'signup'>(defaultWorkerMode);
   const [step, setStep] = useState<'form' | 'otp'>('form');
 
   useEffect(() => {
     if (isOpen) {
-      setRole(defaultRole);
+      setRole(defaultRole === 'admin' ? 'customer' : defaultRole);
       setWorkerMode(defaultWorkerMode || 'login');
       setStep('form');
       setErrorMsg('');
@@ -87,7 +87,7 @@ export default function AuthModal({
       return;
     }
 
-    if (!fullName.trim() && role !== 'admin') {
+    if (!fullName.trim()) {
       setErrorMsg(language === 'hi' ? 'कृपया अपना पूरा नाम दर्ज करें' : 'Please enter your full name');
       return;
     }
@@ -187,8 +187,6 @@ export default function AuthModal({
       ? 'Partner Registration & KYC'
       : role === 'worker'
       ? 'Helper / Partner Login'
-      : role === 'admin'
-      ? 'Admin Portal'
       : 'Customer Sign In / Login';
 
   return (
@@ -216,7 +214,7 @@ export default function AuthModal({
 
         {/* Role Selector Tabs (Only on form step) */}
         {step === 'form' && (
-          <div className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+          <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-xs font-semibold">
             <button
               type="button"
               onClick={() => {
@@ -246,21 +244,6 @@ export default function AuthModal({
             >
               <Briefcase className="h-3.5 w-3.5" />
               <span>Helper</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setRole('admin');
-                setErrorMsg('');
-              }}
-              className={`flex items-center justify-center gap-1.5 rounded-lg py-2 transition-all ${
-                role === 'admin'
-                  ? 'bg-white text-slate-900 shadow-sm font-bold'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Building2 className="h-3.5 w-3.5" />
-              <span>Admin</span>
             </button>
           </div>
         )}
@@ -591,9 +574,9 @@ export default function AuthModal({
         )}
 
         <div className="mt-5 border-t border-slate-100 pt-3">
-          <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1">
-            <Sparkles className="h-3 w-3 text-accent-500" />
-            <span>256-Bit Encrypted • Verified Govt. Security Check</span>
+          <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
+            <Lock className="h-3 w-3 text-slate-400" />
+            <span>Encrypted & Secure Login</span>
           </p>
         </div>
       </div>

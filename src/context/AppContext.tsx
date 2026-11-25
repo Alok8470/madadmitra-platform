@@ -3,7 +3,7 @@ import { CITIES, INITIAL_BOOKINGS } from '../data/mockData';
 import { getStoredSession, clearSession } from '../services/authService';
 import type { Booking, Worker, UserProfile, UserRole, CatalogMode } from '../types';
 
-export type View = 'home' | 'worker-profile' | 'customer' | 'worker' | 'bookings' | 'admin' | 'partner-join' | 'category' | 'wallet';
+export type View = 'home' | 'worker-profile' | 'customer' | 'worker' | 'bookings' | 'admin' | 'partner-join' | 'category' | 'wallet' | 'admin-login';
 
 const STORAGE_LIVE_WORKERS = 'madadmitra_live_workers';
 const STORAGE_CATALOG_MODE = 'madadmitra_catalog_mode';
@@ -77,6 +77,7 @@ function getViewFromPathname(): View {
   if (path === 'worker') return 'worker';
   if (path === 'customer') return 'customer';
   if (path === 'admin') return 'admin';
+  if (path === 'admin-login') return 'admin-login';
   if (path === 'partner-join') return 'partner-join';
   return 'home';
 }
