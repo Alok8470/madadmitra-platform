@@ -77,11 +77,14 @@ export async function checkAreaAvailability(
     service?: string;
     is_verified?: boolean;
     verified?: boolean;
+    verification_status?: string;
     is_online?: boolean;
     online?: boolean;
   }) => {
     // Must be verified and online
-    const verified = w.is_verified ?? w.verified ?? false;
+    const verified = w.verification_status
+      ? w.verification_status === 'verified' && (w.is_verified === true || w.verified === true)
+      : (w.is_verified ?? w.verified ?? false);
     const online = w.is_online ?? w.online ?? false;
     if (!verified || !online) return false;
 
@@ -124,28 +127,51 @@ export async function checkAreaAvailability(
 
   const matchingHelpers: Array<{ service: string }> = [];
 
-  // 1. Check Supabase if configured
+  // 1. Check Supabase if configured (query public.helpers first, fallback to public.workers)
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
-        .from('workers')
-        .select('id, name, service, service_category, is_online, online, is_verified, verified, area, primary_area, serviceable_areas')
-        .or('is_online.eq.true,online.eq.true')
-        .or('is_verified.eq.true,verified.eq.true');
+      const { data: helpersData, error: helpersErr } = await supabase
+        .from('helpers')
+        .select('id, full_name, service_category, is_online, is_verified, verification_status, primary_area, serviceable_areas')
+        .eq('is_online', true)
+        .eq('is_verified', true);
 
-      if (!error && data) {
-        data.forEach((w) => {
-          if (matchesAreaAndService(w)) {
+      if (!helpersErr && Array.isArray(helpersData) && helpersData.length > 0) {
+        helpersData.forEach((h) => {
+          if (
+            matchesAreaAndService({
+              primary_area: h.primary_area,
+              serviceable_areas: h.serviceable_areas,
+              service_category: h.service_category,
+              is_verified: h.is_verified,
+              verification_status: h.verification_status,
+              is_online: h.is_online,
+            })
+          ) {
             matchingHelpers.push({
-              service: (w.service_category || w.service || '').toLowerCase(),
+              service: (h.service_category || '').toLowerCase(),
             });
           }
         });
-      } else if (error) {
-        console.warn('Supabase workers availability query error:', error.message);
+      } else {
+        const { data, error } = await supabase
+          .from('workers')
+          .select('id, name, service, service_category, is_online, online, is_verified, verified, area, primary_area, serviceable_areas')
+          .or('is_online.eq.true,online.eq.true')
+          .or('is_verified.eq.true,verified.eq.true');
+
+        if (!error && data) {
+          data.forEach((w) => {
+            if (matchesAreaAndService(w)) {
+              matchingHelpers.push({
+                service: (w.service_category || w.service || '').toLowerCase(),
+              });
+            }
+          });
+        }
       }
     } catch (err) {
-      console.warn('Supabase workers availability check failed:', err);
+      console.warn('Supabase helpers availability check failed:', err);
     }
   }
 

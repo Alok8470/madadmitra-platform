@@ -151,7 +151,7 @@ export default function AdminDashboard() {
     serviceable_areas: ['Raghav Nagar', 'Civil Lines'],
     pricePerVisit: 200,
     experienceYears: 4,
-    verified: true,
+    verified: false,
     online: true,
   });
 
@@ -308,7 +308,9 @@ export default function AdminDashboard() {
   const totalConvenienceFee =
     completedBookings.length * 10 +
     assignedBookings.length * 10 || bookings.length * 10;
-  const verifiedHelpersCount = workers.filter((w) => w.verified || w.is_verified).length;
+  const verifiedHelpersCount = workers.filter(
+    (w) => w.verification_status === 'verified' && (w.verified === true || w.is_verified === true)
+  ).length;
 
   // Handle Manual Helper Assignment
   const handleAssignHelperManually = async (booking: Booking) => {
@@ -398,13 +400,15 @@ export default function AdminDashboard() {
     // Prioritize verified helpers in that category
     let matches = workers.filter((w) => {
       const wSrv = (w.service_category || w.service || '').toLowerCase();
-      const isVer = w.verified || w.is_verified;
+      const isVer = w.verification_status === 'verified' && (w.verified === true || w.is_verified === true);
       return isVer && (wSrv === srv || srv.includes(wSrv) || wSrv.includes(srv));
     });
 
     // If no exact category match, show all verified helpers so admin has options
     if (matches.length === 0) {
-      matches = workers.filter((w) => w.verified || w.is_verified);
+      matches = workers.filter(
+        (w) => w.verification_status === 'verified' && (w.verified === true || w.is_verified === true)
+      );
     }
 
     return matches;
@@ -466,6 +470,7 @@ export default function AdminDashboard() {
       is_online: newHelper.online,
       verified: newHelper.verified,
       is_verified: newHelper.verified,
+      verification_status: newHelper.verified ? 'verified' : 'unsubmitted',
       avatarColor: 'bg-brand-600',
       isRealPartner: true,
       badgeTag: newHelper.verified ? 'सत्यापित मिस्त्री' : 'KYC Pending',
@@ -505,7 +510,7 @@ export default function AdminDashboard() {
       serviceable_areas: ['Raghav Nagar', 'Civil Lines'],
       pricePerVisit: 200,
       experienceYears: 4,
-      verified: true,
+      verified: false,
       online: true,
     });
     alert(`Helper ${createdHelper.name} added successfully!`);
@@ -1004,7 +1009,8 @@ export default function AdminDashboard() {
                   const pri = (w.primary_area || w.area || '').toLowerCase();
                   const srv = (w.serviceable_areas || []).map((a) => a.toLowerCase());
                   const match = pri.includes(loc.toLowerCase()) || srv.some((a) => a.includes(loc.toLowerCase()));
-                  return match && (w.verified || w.is_verified) && (w.online || w.is_online);
+                  const isVerifiedHelper = w.verification_status === 'verified' && (w.verified === true || w.is_verified === true);
+                  return match && isVerifiedHelper && (w.online || w.is_online);
                 }).length;
 
                 return (
@@ -1318,7 +1324,7 @@ export default function AdminDashboard() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredWorkers.map((w) => {
-                  const isVer = w.verified || w.is_verified;
+                  const isVer = w.verification_status === 'verified' && (w.verified === true || w.is_verified === true);
                   const isOnline = w.online || w.is_online;
 
                   return (
@@ -1387,10 +1393,18 @@ export default function AdminDashboard() {
                           className={`badge cursor-pointer px-2.5 py-1 text-[10px] font-bold ${
                             isVer
                               ? 'bg-brand-100 text-brand-800'
+                              : w.verification_status === 'rejected'
+                              ? 'bg-rose-100 text-rose-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}
                         >
-                          {isVer ? 'Verified' : 'Pending'}
+                          {isVer
+                            ? 'Verified'
+                            : w.verification_status === 'pending'
+                            ? 'KYC Pending'
+                            : w.verification_status === 'rejected'
+                            ? 'KYC Rejected'
+                            : 'Unsubmitted'}
                         </button>
                       </td>
 

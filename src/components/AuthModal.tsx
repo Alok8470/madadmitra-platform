@@ -177,23 +177,24 @@ export default function AuthModal({
           is_online: true,
           pricePerVisit: rate || 250,
           avatarColor: 'bg-brand-600',
-          verified: true,
-          is_verified: true,
+          verified: false,
+          is_verified: false,
+          verification_status: 'unsubmitted',
           isRealPartner: true,
           experienceYears: experienceYears || 3,
-          badgeTag: 'Newly Verified Partner',
-          about: `Verified ${SERVICE_LABELS[service]} in ${city}. KYC verified with Aadhaar and PAN.`,
+          badgeTag: 'KYC Pending Review',
+          about: `${SERVICE_LABELS[service]} in ${city}. Pending KYC verification with Aadhaar.`,
           kyc: {
             aadhaarLastFour: cleanAadhaar.slice(-4),
             panLastFour: cleanPan.slice(-4),
-            status: 'verified',
+            status: 'unsubmitted',
             policeVerificationNo: `UP-${city.slice(0, 3).toUpperCase()}-2026-LIVE`,
             vaccinationStatus: 'fully_vaccinated',
           },
         };
         addWorker(newWorker);
 
-        // Sync to Supabase workers table if configured
+        // Sync to Supabase workers table with unverified status
         if (isSupabaseConfigured && supabase) {
           try {
             await supabase.from('workers').insert({
@@ -207,8 +208,8 @@ export default function AuthModal({
               serviceable_areas: serviceableAreas,
               price_per_visit: rate || 250,
               is_online: true,
-              is_verified: true,
-              verified: true,
+              is_verified: false,
+              verified: false,
               rating: 5.0,
               jobs_count: 0,
               aadhaar_last_four: cleanAadhaar.slice(-4),

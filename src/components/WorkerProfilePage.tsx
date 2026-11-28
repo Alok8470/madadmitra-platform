@@ -48,6 +48,8 @@ export default function WorkerProfilePage({ worker, onBack }: Props) {
         );
     }
 
+    const isVerified = worker.verification_status === 'verified' && (worker.verified === true || worker.is_verified === true);
+
     return (
         <div className="pb-28 max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 w-full max-w-full overflow-x-hidden">
             <button
@@ -66,7 +68,7 @@ export default function WorkerProfilePage({ worker, onBack }: Props) {
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <h1 className="font-display text-2xl font-extrabold text-slate-900">{worker.name}</h1>
-                            {worker.verified && <BadgeCheck className="h-6 w-6 text-brand-600" />}
+                            {isVerified && <BadgeCheck className="h-6 w-6 text-brand-600" />}
                         </div>
                         <p className="text-slate-500 font-medium">{SERVICE_LABELS[worker.service]} • {worker.area}</p>
 
@@ -85,15 +87,28 @@ export default function WorkerProfilePage({ worker, onBack }: Props) {
                 </div>
 
                 <div className="mt-6 border-t border-slate-100 pt-4 flex flex-wrap gap-2.5">
-                    <button
-                        onClick={() => setShowSafetyModal(true)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-colors"
-                    >
-                        <ShieldCheck className="h-4 w-4 text-emerald-600" /> Identity Verified
-                    </button>
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Police Clearance
-                    </span>
+                    {isVerified ? (
+                        <>
+                            <button
+                                onClick={() => setShowSafetyModal(true)}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 text-xs font-bold hover:bg-emerald-100 transition-colors"
+                            >
+                                <ShieldCheck className="h-4 w-4 text-emerald-600" /> Aadhaar Verified
+                            </button>
+                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Police Clearance
+                            </span>
+                        </>
+                    ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 text-xs font-bold">
+                            <Clock className="h-4 w-4 text-amber-600" />
+                            {worker.verification_status === 'pending'
+                                ? 'KYC Review in Progress'
+                                : worker.verification_status === 'rejected'
+                                ? 'KYC Incomplete'
+                                : 'KYC Verification Pending'}
+                        </span>
+                    )}
                 </div>
             </div>
 

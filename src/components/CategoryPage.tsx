@@ -127,7 +127,10 @@ export default function CategoryPage() {
   const filteredWorkers = useMemo(() => {
     if (!selectedCategory) return [];
     return workers.filter((w) => {
-      if (catalogMode === 'verified_only' && !w.isRealPartner && !w.id.startsWith('w_live_')) return false;
+      if (catalogMode === 'verified_only') {
+        const isVer = w.verification_status === 'verified' && (w.verified === true || w.is_verified === true);
+        if (!isVer) return false;
+      }
       if (!w.online) return false;
       if (w.service !== selectedCategory) return false;
 
@@ -608,28 +611,40 @@ export default function CategoryPage() {
                       {w.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-display font-extrabold text-slate-950 text-base flex items-center gap-1.5 group-hover:text-brand-600 transition-colors truncate">
-                        <span>{w.name}</span>
-                        {w.verified && <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />}
-                      </h3>
-                      <p className="text-xs text-slate-500 truncate">{w.area}</p>
-                      <div className="mt-1.5 flex items-center gap-3 text-xs font-semibold">
-                        <span className="flex items-center gap-1 text-amber-500">
-                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                          {w.rating}
-                        </span>
-                        <span className="text-emerald-700 font-bold">{w.jobs} Jobs</span>
-                      </div>
-                      {isRepairCategory ? (
-                        <p className="text-[11px] text-emerald-800 font-medium mt-1">
-                          🏪 Vouched by {w.kyc?.kendraGuarantorName || 'Local Hardware Store'}
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-emerald-800 font-medium mt-1 flex items-center gap-1">
-                          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 inline shrink-0" />
-                          <span>Aadhaar-Verified Domestic Helper</span>
-                        </p>
-                      )}
+                      {(() => {
+                        const isVerified = w.verification_status === 'verified' && (w.verified === true || w.is_verified === true);
+                        return (
+                          <>
+                            <h3 className="font-display font-extrabold text-slate-950 text-base flex items-center gap-1.5 group-hover:text-brand-600 transition-colors truncate">
+                              <span>{w.name}</span>
+                              {isVerified && <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />}
+                            </h3>
+                            <p className="text-xs text-slate-500 truncate">{w.area}</p>
+                            <div className="mt-1.5 flex items-center gap-3 text-xs font-semibold">
+                              <span className="flex items-center gap-1 text-amber-500">
+                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                                {w.rating}
+                              </span>
+                              <span className="text-emerald-700 font-bold">{w.jobs} Jobs</span>
+                            </div>
+                            {isRepairCategory ? (
+                              <p className="text-[11px] text-emerald-800 font-medium mt-1">
+                                🏪 Vouched by {w.kyc?.kendraGuarantorName || 'Local Hardware Store'}
+                              </p>
+                            ) : isVerified ? (
+                              <p className="text-[11px] text-emerald-800 font-medium mt-1 flex items-center gap-1">
+                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 inline shrink-0" />
+                                <span>Aadhaar-Verified Domestic Helper</span>
+                              </p>
+                            ) : (
+                              <p className="text-[11px] text-amber-800 font-medium mt-1 flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />
+                                <span>KYC Review In Progress</span>
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 

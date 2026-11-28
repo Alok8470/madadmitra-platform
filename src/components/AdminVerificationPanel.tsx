@@ -250,7 +250,7 @@ function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardP
         if (error) { setApproveError(error.message); return; }
       }
       // Reflect verified status on the helper's public profile immediately
-      setWorkerVerified(record.helper_id || record.helper_phone || record.helper_name || '', true);
+      setWorkerVerified(record.helper_id || record.helper_phone || record.helper_name || '', true, 'verified');
       onMockUpdate?.(record.id as string, 'verified');
       onRefresh();
     } catch (e: unknown) {
@@ -275,7 +275,7 @@ function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardP
         if (error) { setRejectError(error.message); return; }
       }
       // Reflect rejected status on the helper's public profile
-      setWorkerVerified(record.helper_id || record.helper_phone || record.helper_name || '', false);
+      setWorkerVerified(record.helper_id || record.helper_phone || record.helper_name || '', false, 'rejected', reason);
       onMockUpdate?.(record.id as string, 'rejected', reason);
       setShowRejectForm(false);
       onRefresh();

@@ -1,7 +1,16 @@
 import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from 'react';
 import { CITIES, INITIAL_BOOKINGS } from '../data/mockData';
 import { getStoredSession, clearSession } from '../services/authService';
-import type { Booking, Worker, UserProfile, UserRole, CatalogMode } from '../types';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import {
+  fetchHelpersFromSupabase,
+  createHelperInSupabase,
+  updateHelperInSupabase,
+  deleteHelperFromSupabase,
+  setHelperVerificationInSupabase,
+  mapHelperRowToWorker,
+} from '../services/helperService';
+import type { Booking, Worker, UserProfile, UserRole, CatalogMode, VerificationStatus } from '../types';
 
 export type View = 'home' | 'worker-profile' | 'customer' | 'worker' | 'bookings' | 'admin' | 'partner-join' | 'category' | 'wallet' | 'admin-login';
 
@@ -36,7 +45,12 @@ interface AppState {
   workers: Worker[];
   toggleWorkerOnline: (id: string) => void;
   toggleWorkerVerified: (id: string) => void;
-  setWorkerVerified: (idOrPhone: string, verified: boolean) => void;
+  setWorkerVerified: (
+    idOrPhone: string,
+    verified: boolean,
+    status?: VerificationStatus,
+    rejectionReason?: string | null
+  ) => void;
   bookings: Booking[];
   addBooking: (b: Booking) => void;
   updateBooking: (b: Booking) => void;
@@ -143,33 +157,96 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const toggleWorkerOnline = (id: string) => {
-    setWorkers((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, online: !w.online } : w))
-    );
-  };
+  // Sync helpers with Supabase public.helpers table on mount and via Realtime
+  useEffect(() => {
+    let isMounted = true;
 
-  const toggleWorkerVerified = (id: string) => {
-    setWorkers((prev) => {
-      const updated = prev.map((w) => (w.id === id ? { ...w, verified: !w.verified } : w));
+    async function loadHelpersFromSupabase() {
       try {
-        const liveOnly = updated.filter((x) => x.isRealPartner || x.id.startsWith('w_live_'));
-        localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(liveOnly));
-      } catch (e) {
-        console.error(e);
-      }
-      return updated;
-    });
-  };
+        const supaHelpers = await fetchHelpersFromSupabase();
+        if (isMounted && supaHelpers.length > 0) {
+          setWorkers((prev) => {
+            const supaMap = new Map<string, Worker>();
+            supaHelpers.forEach((h) => supaMap.set(h.id, h));
 
-  const setWorkerVerified = (idOrPhone: string, verified: boolean) => {
+            const merged = supaHelpers.slice();
+            prev.forEach((localW) => {
+              if (!supaMap.has(localW.id)) {
+                merged.push(localW);
+              }
+            });
+
+            try {
+              localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(merged));
+            } catch (e) {
+              console.error(e);
+            }
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn('Could not load helpers from Supabase on mount:', err);
+      }
+    }
+
+    loadHelpersFromSupabase();
+
+    // Supabase Realtime channel for helpers
+    if (isSupabaseConfigured && supabase) {
+      const channel = supabase
+        .channel('helpers_live_sync')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'helpers' },
+          (payload) => {
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const mapped = mapHelperRowToWorker(payload.new);
+              setWorkers((prev) => {
+                const exists = prev.some((w) => w.id === mapped.id);
+                const next = exists
+                  ? prev.map((w) => (w.id === mapped.id ? { ...w, ...mapped } : w))
+                  : [mapped, ...prev];
+                try {
+                  localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(next));
+                } catch {}
+                return next;
+              });
+            } else if (payload.eventType === 'DELETE') {
+              const deletedId = (payload.old as any)?.id;
+              if (deletedId) {
+                setWorkers((prev) => {
+                  const next = prev.filter((w) => w.id !== deletedId);
+                  try {
+                    localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(next));
+                  } catch {}
+                  return next;
+                });
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        isMounted = false;
+        supabase.removeChannel(channel);
+      };
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const toggleWorkerOnline = (id: string) => {
+    let newOnline = false;
     setWorkers((prev) => {
       const updated = prev.map((w) => {
-        const matches =
-          w.id === idOrPhone ||
-          (w.phone && idOrPhone && w.phone.replace(/\D/g, '').endsWith(idOrPhone.replace(/\D/g, '').slice(-10))) ||
-          (w.name && idOrPhone && w.name.toLowerCase() === idOrPhone.toLowerCase());
-        return matches ? { ...w, verified, isRealPartner: verified ? true : w.isRealPartner } : w;
+        if (w.id === id) {
+          newOnline = !w.online;
+          return { ...w, online: newOnline, is_online: newOnline };
+        }
+        return w;
       });
       try {
         const liveOnly = updated.filter((x) => x.isRealPartner || x.id.startsWith('w_live_'));
@@ -179,6 +256,73 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return updated;
     });
+
+    updateHelperInSupabase(id, { online: newOnline, is_online: newOnline }).catch(console.warn);
+  };
+
+  const toggleWorkerVerified = (id: string) => {
+    let newVerified = false;
+    setWorkers((prev) => {
+      const updated = prev.map((w) => {
+        if (w.id === id) {
+          newVerified = !(w.verification_status === 'verified' && (w.verified || w.is_verified));
+          return {
+            ...w,
+            verified: newVerified,
+            is_verified: newVerified,
+            verification_status: newVerified ? ('verified' as VerificationStatus) : ('unsubmitted' as VerificationStatus),
+          };
+        }
+        return w;
+      });
+      try {
+        const liveOnly = updated.filter((x) => x.isRealPartner || x.id.startsWith('w_live_'));
+        localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(liveOnly));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+
+    setHelperVerificationInSupabase(id, newVerified ? 'verified' : 'unsubmitted').catch(console.warn);
+  };
+
+  const setWorkerVerified = (
+    idOrPhone: string,
+    verified: boolean,
+    status?: VerificationStatus,
+    rejectionReason?: string | null
+  ) => {
+    const finalStatus: VerificationStatus = status || (verified ? 'verified' : 'unsubmitted');
+    const isVer = finalStatus === 'verified' && verified;
+
+    setWorkers((prev) => {
+      const updated = prev.map((w) => {
+        const matches =
+          w.id === idOrPhone ||
+          (w.phone && idOrPhone && w.phone.replace(/\D/g, '').endsWith(idOrPhone.replace(/\D/g, '').slice(-10))) ||
+          (w.name && idOrPhone && w.name.toLowerCase() === idOrPhone.toLowerCase());
+        return matches
+          ? {
+              ...w,
+              verified: isVer,
+              is_verified: isVer,
+              verification_status: finalStatus,
+              rejection_reason: rejectionReason || null,
+              isRealPartner: isVer ? true : w.isRealPartner,
+            }
+          : w;
+      });
+      try {
+        const liveOnly = updated.filter((x) => x.isRealPartner || x.id.startsWith('w_live_'));
+        localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(liveOnly));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+
+    setHelperVerificationInSupabase(idOrPhone, finalStatus, rejectionReason).catch(console.warn);
   };
 
   const addBooking = (b: Booking) => setBookings((prev) => [b, ...prev]);
@@ -201,7 +345,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFreeBookingsLeft((n) => Math.max(0, n - 1));
 
   const addWorker = (w: Worker) => {
-    const partnerWorker: Worker = { ...w, isRealPartner: true };
+    const isApproved = w.verification_status === 'verified' && (w.is_verified === true || w.verified === true);
+    const partnerWorker: Worker = {
+      ...w,
+      isRealPartner: true,
+      verified: isApproved,
+      is_verified: isApproved,
+      verification_status: isApproved ? 'verified' : (w.verification_status || 'unsubmitted'),
+    };
     setWorkers((prev) => {
       const updated = [partnerWorker, ...prev.filter((x) => x.id !== partnerWorker.id)];
       try {
@@ -212,6 +363,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return updated;
     });
+
+    createHelperInSupabase(partnerWorker).catch(console.warn);
   };
 
   const updateWorker = (w: Worker) => {
@@ -225,6 +378,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return updated;
     });
+
+    updateHelperInSupabase(w.id, w).catch(console.warn);
   };
 
   const removeWorker = (id: string) => {
@@ -238,6 +393,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return updated;
     });
+
+    deleteHelperFromSupabase(id).catch(console.warn);
   };
 
   const logout = () => {

@@ -110,44 +110,85 @@ export async function findBestAvailableHelper(
   const candidatePool: Worker[] = [];
   const seenIds = new Set<string>();
 
-  // 1. Fetch from Supabase workers table if configured
+  // 1. Fetch from Supabase helpers table (or workers table fallback)
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
-        .from('workers')
+      // 1a. Primary: public.helpers table
+      const { data: helpersData, error: helpersErr } = await supabase
+        .from('helpers')
         .select('*')
-        .or('is_online.eq.true,online.eq.true')
-        .or('is_verified.eq.true,verified.eq.true');
+        .eq('is_online', true)
+        .eq('is_verified', true);
 
-      if (!error && Array.isArray(data)) {
-        data.forEach((row) => {
+      if (!helpersErr && Array.isArray(helpersData) && helpersData.length > 0) {
+        helpersData.forEach((row) => {
           const srv = (row.service_category || row.service || '').toLowerCase();
           if (srv === serviceCategory.toLowerCase() && !rejectedHelperIds.includes(row.id)) {
             const mappedWorker: Worker = {
               id: row.id,
-              name: row.name,
-              phone: row.phone,
-              service: row.service_category || row.service,
-              service_category: row.service_category || row.service,
+              user_id: row.user_id || undefined,
+              name: row.full_name || row.name || 'Service Partner',
+              phone: row.phone || '',
+              service: row.service_category || 'cook',
+              service_category: row.service_category || 'cook',
               rating: Number(row.rating) || 5.0,
               jobs: Number(row.jobs_count) || 0,
-              area: row.primary_area || row.area,
-              primary_area: row.primary_area || row.area,
-              serviceable_areas: row.serviceable_areas || [row.area],
+              area: row.primary_area || row.area || 'Deoria',
+              primary_area: row.primary_area || row.area || 'Deoria',
+              serviceable_areas: Array.isArray(row.serviceable_areas) ? row.serviceable_areas : [row.primary_area || 'Deoria'],
               city: row.city || 'Deoria',
-              online: row.is_online ?? row.online ?? true,
-              is_online: row.is_online ?? row.online ?? true,
-              verified: row.is_verified ?? row.verified ?? true,
-              is_verified: row.is_verified ?? row.verified ?? true,
-              pricePerVisit: row.price_per_visit || 200,
+              online: true,
+              is_online: true,
+              verified: true,
+              is_verified: true,
+              verification_status: 'verified',
+              pricePerVisit: Number(row.price_per_visit) || 200,
               avatarColor: row.avatar_color || 'bg-brand-600',
-              lat: row.lat !== null ? Number(row.lat) : undefined,
-              lng: row.lng !== null ? Number(row.lng) : undefined,
+              lat: row.lat !== null && row.lat !== undefined ? Number(row.lat) : undefined,
+              lng: row.lng !== null && row.lng !== undefined ? Number(row.lng) : undefined,
             };
             candidatePool.push(mappedWorker);
             seenIds.add(mappedWorker.id);
           }
         });
+      } else {
+        // 1b. Fallback: public.workers table
+        const { data, error } = await supabase
+          .from('workers')
+          .select('*')
+          .or('is_online.eq.true,online.eq.true')
+          .or('is_verified.eq.true,verified.eq.true');
+
+        if (!error && Array.isArray(data)) {
+          data.forEach((row) => {
+            const srv = (row.service_category || row.service || '').toLowerCase();
+            if (srv === serviceCategory.toLowerCase() && !rejectedHelperIds.includes(row.id)) {
+              const mappedWorker: Worker = {
+                id: row.id,
+                name: row.name,
+                phone: row.phone,
+                service: row.service_category || row.service,
+                service_category: row.service_category || row.service,
+                rating: Number(row.rating) || 5.0,
+                jobs: Number(row.jobs_count) || 0,
+                area: row.primary_area || row.area,
+                primary_area: row.primary_area || row.area,
+                serviceable_areas: row.serviceable_areas || [row.area],
+                city: row.city || 'Deoria',
+                online: row.is_online ?? row.online ?? true,
+                is_online: row.is_online ?? row.online ?? true,
+                verified: row.is_verified ?? row.verified ?? true,
+                is_verified: row.is_verified ?? row.verified ?? true,
+                pricePerVisit: row.price_per_visit || 200,
+                avatarColor: row.avatar_color || 'bg-brand-600',
+                lat: row.lat !== null ? Number(row.lat) : undefined,
+                lng: row.lng !== null ? Number(row.lng) : undefined,
+              };
+              candidatePool.push(mappedWorker);
+              seenIds.add(mappedWorker.id);
+            }
+          });
+        }
       }
     } catch (err) {
       console.warn('Supabase fetch helpers for dispatch error:', err);
@@ -157,12 +198,14 @@ export async function findBestAvailableHelper(
   // 2. Also incorporate local workers from AppContext (e.g., live partners created during session)
   localWorkers.forEach((w) => {
     if (seenIds.has(w.id)) return;
-    const verified = w.is_verified ?? w.verified ?? false;
+    const isVerified = w.verification_status
+      ? w.verification_status === 'verified' && (w.is_verified === true || w.verified === true)
+      : (w.is_verified ?? w.verified ?? false);
     const online = w.is_online ?? w.online ?? false;
     const srv = (w.service_category || w.service || '').toLowerCase();
 
     if (
-      verified &&
+      isVerified &&
       online &&
       srv === serviceCategory.toLowerCase() &&
       !rejectedHelperIds.includes(w.id)
