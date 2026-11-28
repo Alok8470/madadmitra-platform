@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ShieldCheck,
   MapPin,
@@ -16,8 +16,10 @@ import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import {
   initiateAutoDispatch,
+  handleHelperDeclineOrTimeout,
   type DispatchInitiationResult,
 } from '../services/dispatchService';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { Booking, ServiceId, Worker } from '../types';
 
 interface Props {
@@ -48,6 +50,9 @@ export const DispatchRadarModal: React.FC<Props> = ({
 
   const startOtp = '4821';
   const cleanArea = areaName.replace(/\(coming soon\)/i, '').trim();
+  const activeBookingIdRef = useRef<string | null>(null);
+  const matchedHelperRef = useRef<Worker | null>(null);
+  matchedHelperRef.current = matchedHelper;
 
   useEffect(() => {
     if (!open) {
@@ -55,6 +60,7 @@ export const DispatchRadarModal: React.FC<Props> = ({
       setDispatchResult(null);
       setMatchedHelper(null);
       setSecondsRemaining(120);
+      activeBookingIdRef.current = null;
       return;
     }
 
@@ -72,6 +78,7 @@ export const DispatchRadarModal: React.FC<Props> = ({
     }).then((res) => {
       if (!active) return;
       setDispatchResult(res);
+      activeBookingIdRef.current = res.bookingId;
 
       if (res.status === 'searching_helper' && res.assigned_helper) {
         setMatchedHelper(res.assigned_helper);
@@ -101,19 +108,14 @@ export const DispatchRadarModal: React.FC<Props> = ({
         };
         addBooking(newBooking);
 
-        // Radar scan animation for 2 seconds before showing candidate offer
+        // Transition from initial radar pulse to offer active
         setTimeout(() => {
           if (active) setPhase('offer_made');
-        }, 2200);
-
-        // Simulate helper acceptance after 4.5 seconds for complete user journey
-        setTimeout(() => {
-          if (active) setPhase('assigned');
-        }, 5000);
+        }, 1800);
       } else {
         setTimeout(() => {
           if (active) setPhase('manual_needed');
-        }, 1800);
+        }, 1500);
       }
     });
 
@@ -122,14 +124,140 @@ export const DispatchRadarModal: React.FC<Props> = ({
     };
   }, [open, cleanArea, serviceCategory, serviceName, totalBill, workers, currentUser]);
 
-  // 2-Minute Countdown Timer for offer_expires_at
+  // Real-time listener for booking status changes
   useEffect(() => {
-    if (phase !== 'offer_made' && phase !== 'scanning') return;
+    if (!open || !dispatchResult?.bookingId) return;
+
+    const bId = dispatchResult.bookingId;
+    let channel: any = null;
+
+    if (isSupabaseConfigured && supabase) {
+      channel = supabase
+        .channel(`booking_updates:${bId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'bookings',
+            filter: `id=eq.${bId}`,
+          },
+          (payload) => {
+            const row = payload.new as any;
+            if (!row) return;
+
+            if (row.status === 'assigned') {
+              setPhase('assigned');
+              if (row.worker_id || row.assigned_helper_id) {
+                const helper = workers.find((w) => w.id === (row.assigned_helper_id || row.worker_id));
+                if (helper) setMatchedHelper(helper);
+              }
+            } else if (row.status === 'manual_needed') {
+              setPhase('manual_needed');
+            } else if (row.status === 'searching_helper') {
+              setPhase('offer_made');
+              setSecondsRemaining(120);
+              const nextHelper = workers.find((w) => w.id === row.current_offer_helper_id);
+              if (nextHelper) setMatchedHelper(nextHelper);
+              setDispatchResult((prev) => prev ? {
+                ...prev,
+                attempt_count: row.attempt_count || prev.attempt_count + 1,
+                current_offer_helper_id: row.current_offer_helper_id,
+              } : null);
+            }
+          }
+        )
+        .on('broadcast', { event: 'booking_assigned' }, (payload) => {
+          setPhase('assigned');
+          if (payload.payload?.helperId) {
+            const h = workers.find((w) => w.id === payload.payload.helperId);
+            if (h) setMatchedHelper(h);
+          }
+        })
+        .on('broadcast', { event: 'booking_status_changed' }, (payload) => {
+          if (payload.payload?.status === 'manual_needed') {
+            setPhase('manual_needed');
+          }
+        })
+        .subscribe();
+    }
+
+    // Window event listeners for local / instant updates
+    const handleAssignedEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.bookingId === bId) {
+        setPhase('assigned');
+        if (detail.helper) {
+          setMatchedHelper(detail.helper);
+        }
+      }
+    };
+
+    const handleStatusUpdateEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.bookingId === bId) {
+        if (detail.status === 'assigned') {
+          setPhase('assigned');
+          if (detail.helper) setMatchedHelper(detail.helper);
+        } else if (detail.status === 'manual_needed') {
+          setPhase('manual_needed');
+        } else if (detail.status === 'searching_helper') {
+          setPhase('offer_made');
+          setSecondsRemaining(120);
+          if (detail.candidate) setMatchedHelper(detail.candidate);
+          setDispatchResult((prev) => prev ? {
+            ...prev,
+            attempt_count: detail.attempt_count || prev.attempt_count + 1,
+          } : null);
+        }
+      }
+    };
+
+    window.addEventListener('madadmitra:booking_assigned', handleAssignedEvent);
+    window.addEventListener('madadmitra:booking_status_updated', handleStatusUpdateEvent);
+
+    return () => {
+      if (channel && supabase) supabase.removeChannel(channel);
+      window.removeEventListener('madadmitra:booking_assigned', handleAssignedEvent);
+      window.removeEventListener('madadmitra:booking_status_updated', handleStatusUpdateEvent);
+    };
+  }, [open, dispatchResult?.bookingId, workers]);
+
+  // 2-Minute Countdown Timer for offer_expires_at with auto-timeout cascade
+  useEffect(() => {
+    if (phase !== 'offer_made') return;
+
     const interval = setInterval(() => {
-      setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 0));
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // 2-Minute Window Expired: Cascade to next helper
+          const bId = activeBookingIdRef.current;
+          const currentH = matchedHelperRef.current;
+          if (bId && currentH) {
+            handleHelperDeclineOrTimeout(bId, currentH.id, {
+              serviceCategory: (serviceCategory || serviceName).toLowerCase(),
+              customerArea: cleanArea,
+              localWorkers: workers,
+            }).then((nextRes) => {
+              setDispatchResult(nextRes);
+              if (nextRes.status === 'searching_helper' && nextRes.assigned_helper) {
+                setMatchedHelper(nextRes.assigned_helper);
+                setSecondsRemaining(120);
+                setPhase('offer_made');
+              } else {
+                setPhase('manual_needed');
+              }
+            });
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
+
     return () => clearInterval(interval);
-  }, [phase]);
+  }, [phase, serviceCategory, serviceName, cleanArea, workers]);
 
   const formatCountdown = (secs: number) => {
     const mins = Math.floor(secs / 60);
@@ -168,8 +296,16 @@ export const DispatchRadarModal: React.FC<Props> = ({
                 {isHi ? 'निकटतम हेल्पर एल्गोरिदम सक्रिय' : 'NEAREST HELPER AUTO-DISPATCH'}
               </span>
               <h2 className="font-display text-2xl font-black text-slate-950">
-                {isHi ? `${cleanArea} में निकटतम कारीगर खोज रहे हैं...` : `Matching Nearest Pro in ${cleanArea}...`}
+                {isHi ? `${cleanArea} में निकटतम सत्यापित सहायक खोज रहे हैं...` : 'Finding the nearest verified helper in your area...'}
               </h2>
+              <div className="mt-3 flex items-center justify-center gap-2 text-xs font-bold text-brand-600 bg-brand-50/70 border border-brand-200 py-1.5 px-3 rounded-full w-fit mx-auto">
+                <span className="h-2 w-2 rounded-full bg-brand-600 animate-ping" />
+                <span>
+                  {isHi
+                    ? `निकटवर्ती पार्टनर्स की जांच जारी है (प्रयास ${dispatchResult?.attempt_count || 1}/3)...`
+                    : `Checking nearby partners (Attempt ${dispatchResult?.attempt_count || 1} of 3)...`}
+                </span>
+              </div>
               <p className="text-xs text-slate-500 max-w-sm mx-auto mt-2 leading-relaxed">
                 {isHi
                   ? 'प्राथमिक क्षेत्र और GPS दूरी के आधार पर ऑनलाइन व सत्यापित सहायकों को आर्डर भेजा जा रहा है।'
@@ -189,11 +325,19 @@ export const DispatchRadarModal: React.FC<Props> = ({
                   <span>{isHi ? 'ऑफर भेजा गया (प्रतीक्षा जारी)' : 'Offer Sent • Reserving Helper'}</span>
                 </span>
                 <h3 className="font-display text-xl font-black text-slate-950 mt-1">
-                  {serviceName}
+                  {isHi ? 'आपके इलाके में निकटतम सत्यापित सहायक खोज रहे हैं...' : 'Finding the nearest verified helper in your area...'}
                 </h3>
+                <p className="text-xs text-slate-500 font-bold flex items-center gap-1 mt-0.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
+                  <span>
+                    {isHi
+                      ? `निकटवर्ती पार्टनर्स की जांच जारी है (प्रयास ${dispatchResult?.attempt_count || 1}/3)`
+                      : `Checking nearby partners (Attempt ${dispatchResult?.attempt_count || 1} of 3)`}
+                  </span>
+                </p>
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Offer Expires In</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">2-Min Accept Window</span>
                 <span className="text-xl font-mono font-black text-amber-600 flex items-center gap-1">
                   <Timer className="h-4 w-4" />
                   {formatCountdown(secondsRemaining)}
@@ -242,7 +386,7 @@ export const DispatchRadarModal: React.FC<Props> = ({
                 <span>
                   {isHi
                     ? `सहायक को 2 मिनट के लिए सुरक्षित रखा गया है। स्वीकृति की प्रतीक्षा की जा रही है...`
-                    : `Offer dispatched exclusively to ${matchedHelper.name}. Helper is accepting the job...`}
+                    : `Offer dispatched exclusively to ${matchedHelper.name}. Helper is reviewing to accept...`}
                 </span>
               </div>
             </div>
@@ -252,7 +396,9 @@ export const DispatchRadarModal: React.FC<Props> = ({
                 <span className="text-slate-500 text-[11px]">Estimated Bill:</span>
                 <p className="font-extrabold text-slate-900 text-base">₹{totalBill} (Pay Cash/UPI)</p>
               </div>
-              <span className="badge bg-brand-100 text-brand-800 font-bold">Priority Attempt #1</span>
+              <span className="badge bg-brand-100 text-brand-800 font-bold">
+                Attempt #{dispatchResult?.attempt_count || 1} of 3
+              </span>
             </div>
           </div>
         )}
@@ -274,7 +420,7 @@ export const DispatchRadarModal: React.FC<Props> = ({
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Est. Arrival</span>
                 <span className="text-xl font-black text-brand-600 flex items-center gap-1">
                   <Clock className="h-4 w-4" />
-                  18 mins
+                  ~18 mins
                 </span>
               </div>
             </div>
@@ -300,10 +446,10 @@ export const DispatchRadarModal: React.FC<Props> = ({
                       {matchedHelper.rating || 5.0}
                     </span>
                     <span>•</span>
-                    <span>{matchedHelper.jobs || 18} Mohalla Visits</span>
+                    <span className="text-emerald-700 font-bold">Aadhaar Verified</span>
                   </div>
-                  <p className="text-[11px] text-emerald-800 font-semibold mt-0.5">
-                    🛡️ Aadhaar-Verified & Primary Match in {matchedHelper.primary_area || cleanArea}
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    📍 {matchedHelper.primary_area || cleanArea} • {matchedHelper.phone || '94500 00000'}
                   </p>
                 </div>
               </div>
@@ -311,22 +457,22 @@ export const DispatchRadarModal: React.FC<Props> = ({
               {matchedHelper.phone && (
                 <a
                   href={`tel:${matchedHelper.phone}`}
-                  className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-soft transition-colors cursor-pointer"
-                  title="Call Helper"
+                  className="btn bg-emerald-600 hover:bg-emerald-500 text-white h-11 w-11 rounded-xl flex items-center justify-center shrink-0 shadow-soft active:scale-95"
+                  aria-label="Call helper"
                 >
                   <Phone className="h-5 w-5" />
                 </a>
               )}
             </div>
 
-            {/* OTP Security Verification Box */}
-            <div className="rounded-2xl bg-slate-950 p-4 text-white shadow-soft space-y-2">
+            {/* SafeStart Start-Job OTP Card */}
+            <div className="rounded-2xl bg-slate-950 text-white p-4 space-y-2 border border-slate-800">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300 font-bold flex items-center gap-1.5">
-                  <Lock className="h-4 w-4 text-amber-400" />
-                  {isHi ? 'काम शुरू करने का Start OTP:' : 'Start Job Verification OTP:'}
+                <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5" />
+                  SafeStart™ Service Code (Start OTP)
                 </span>
-                <span className="text-[10px] bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                <span className="badge bg-amber-400/20 text-amber-300 text-[10px]">
                   {isHi ? 'कारीगर को बताएं' : 'Share on arrival'}
                 </span>
               </div>
@@ -374,25 +520,43 @@ export const DispatchRadarModal: React.FC<Props> = ({
           </div>
         )}
 
-        {/* PHASE 4: MANUAL NEEDED (No available helper or all rejected) */}
+        {/* PHASE 4: MANUAL NEEDED (High Demand / Fallback after 3 attempts or no partners) */}
         {phase === 'manual_needed' && (
           <div className="py-6 text-center space-y-4 animate-fade-in">
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-amber-100 text-amber-700 shadow-soft">
               <AlertCircle className="h-7 w-7 text-amber-700" />
             </div>
             <span className="badge bg-amber-100 text-amber-900 font-bold text-xs">
-              Status: Manual Assistance Needed
+              {isHi ? 'स्थिति: मैन्युअल असाइनमेंट जारी' : 'Status: Manual Assignment in Progress'}
             </span>
             <h3 className="font-display text-xl font-bold text-slate-950">
-              Helpers in {cleanArea} are Currently Engaged
+              {isHi
+                ? 'आपके क्षेत्र में भारी मांग है'
+                : 'High Demand in Your Area'}
             </h3>
-            <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-              We couldn't immediately auto-match an online helper in your area. Your booking has been flagged for our Deoria area coordinator to manually dispatch the nearest available partner.
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-sm font-semibold leading-relaxed max-w-md mx-auto">
+              <p>
+                {isHi
+                  ? 'आपके क्षेत्र में भारी मांग है — हमारी टीम जल्द ही आपके लिए एक सत्यापित पार्टनर को मैन्युअल रूप से असाइन कर रही है।'
+                  : 'High demand in your area — our team is manually assigning a verified partner for you shortly.'}
+              </p>
+            </div>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+              {isHi
+                ? 'हमारा देवरिया क्षेत्रीय नोडल केंद्र तुरंत उपलब्ध सबसे नजदीकी मिस्त्री से संपर्क कर रहा है। आपको जल्द ही कॉल या एसएमएस प्राप्त होगा।'
+                : 'Our Deoria nodal team is directly coordinating with nearby partners. You will receive an SMS/call confirmation shortly.'}
             </p>
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
+              <a
+                href="tel:9450000000"
+                className="btn bg-amber-400 hover:bg-amber-300 text-slate-950 py-3 px-5 text-xs font-bold rounded-xl shadow-soft flex items-center justify-center gap-1.5"
+              >
+                <Phone className="h-4 w-4" />
+                <span>Call Deoria Helpdesk (+91 94500 00000)</span>
+              </a>
               <button
                 onClick={onClose}
-                className="btn-primary py-2.5 px-6 text-xs font-bold rounded-xl shadow-soft"
+                className="btn-primary py-3 px-6 text-xs font-bold rounded-xl shadow-soft"
               >
                 Understood, Keep Me Updated
               </button>

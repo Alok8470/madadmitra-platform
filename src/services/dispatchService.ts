@@ -276,17 +276,69 @@ export interface DispatchInitiationResult {
 
 /**
  * Initiates auto-dispatch for a new customer booking:
- * 1. Sets status to 'searching_helper'
+ * 1. Checks 3-attempt limit: if rejectedHelperIds.length >= 3, sets status to 'manual_needed'
  * 2. Finds the nearest verified & online helper (priority: primary_area -> serviceable_areas -> closest GPS)
  * 3. Sets current_offer_helper_id to nearest helper's ID
  * 4. Sets offer_expires_at to now() + 2 minutes
- * 5. Updates Supabase and broadcasts via Realtime channel
+ * 5. Updates Supabase and broadcasts via Realtime channels and custom events
  */
 export async function initiateAutoDispatch(
   params: InitiateDispatchParams
 ): Promise<DispatchInitiationResult> {
   const bookingId = params.bookingId || `MM-BK-${Date.now().toString().slice(-6)}`;
   const rejectedHelperIds = params.rejectedHelperIds || [];
+
+  // Check 3-attempt fallback cascade limit
+  if (rejectedHelperIds.length >= 3) {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('bookings').upsert({
+          id: bookingId,
+          service: params.serviceCategory,
+          area: params.customerArea,
+          status: 'manual_needed',
+          current_offer_helper_id: null,
+          offer_expires_at: null,
+          attempt_count: 3,
+          rejected_helper_ids: rejectedHelperIds,
+          assigned_helper_id: null,
+          updated_at: new Date().toISOString(),
+        });
+
+        // Broadcast to customer and admin
+        const channel = supabase.channel(`booking_updates:${bookingId}`);
+        await channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            channel.send({
+              type: 'broadcast',
+              event: 'booking_status_changed',
+              payload: { bookingId, status: 'manual_needed', attempt_count: 3 },
+            });
+          }
+        });
+      } catch (err) {
+        console.warn('Supabase manual_needed status update fallback:', err);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('madadmitra:booking_status_updated', {
+          detail: { bookingId, status: 'manual_needed', attempt_count: 3 },
+        })
+      );
+    }
+
+    return {
+      bookingId,
+      status: 'manual_needed',
+      current_offer_helper_id: null,
+      assigned_helper: null,
+      offer_expires_at: null,
+      attempt_count: 3,
+      rejected_helper_ids: rejectedHelperIds,
+    };
+  }
 
   // Find the best available helper
   const bestMatch = await findBestAvailableHelper({
@@ -300,10 +352,10 @@ export async function initiateAutoDispatch(
 
   // Offer expiration set to now() + 2 minutes
   const offerExpiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+  const attemptCount = rejectedHelperIds.length + 1;
 
   if (bestMatch) {
     const candidate = bestMatch.worker;
-    const attemptCount = rejectedHelperIds.length + 1;
 
     // Persist in Supabase bookings table if configured
     if (isSupabaseConfigured && supabase) {
@@ -348,6 +400,7 @@ export async function initiateAutoDispatch(
                 customerArea: params.customerArea,
                 offerExpiresAt,
                 totalAmount: params.totalAmount || candidate.pricePerVisit || 200,
+                attemptCount,
               },
             });
           }
@@ -355,6 +408,34 @@ export async function initiateAutoDispatch(
       } catch (broadcastErr) {
         console.warn('Realtime channel broadcast fallback:', broadcastErr);
       }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('madadmitra:mock_job_offer', {
+          detail: {
+            bookingId,
+            helperId: candidate.id,
+            serviceCategory: params.serviceCategory,
+            customerArea: params.customerArea,
+            offerExpiresAt,
+            totalAmount: params.totalAmount || candidate.pricePerVisit || 200,
+            attemptCount,
+          },
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent('madadmitra:booking_status_updated', {
+          detail: {
+            bookingId,
+            status: 'searching_helper',
+            attempt_count: attemptCount,
+            current_offer_helper_id: candidate.id,
+            offer_expires_at: offerExpiresAt,
+            candidate,
+          },
+        })
+      );
     }
 
     return {
@@ -380,7 +461,7 @@ export async function initiateAutoDispatch(
         status: 'manual_needed',
         current_offer_helper_id: null,
         offer_expires_at: null,
-        attempt_count: rejectedHelperIds.length,
+        attempt_count: attemptCount,
         rejected_helper_ids: rejectedHelperIds,
         assigned_helper_id: null,
         updated_at: new Date().toISOString(),
@@ -390,48 +471,147 @@ export async function initiateAutoDispatch(
     }
   }
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('madadmitra:booking_status_updated', {
+        detail: { bookingId, status: 'manual_needed', attempt_count: attemptCount },
+      })
+    );
+  }
+
   return {
     bookingId,
     status: 'manual_needed',
     current_offer_helper_id: null,
     assigned_helper: null,
     offer_expires_at: null,
-    attempt_count: rejectedHelperIds.length,
+    attempt_count: attemptCount,
     rejected_helper_ids: rejectedHelperIds,
   };
 }
 
 /**
- * When a helper rejects an offer or the 2-minute timer expires:
- * Appends helper to rejected_helper_ids and immediately cascades to the next best helper.
+ * Accept / Decline / Timeout Handling:
+ * On Decline or 2-Minute Timer Expiry:
+ * 1. Adds helper to rejected_helper_ids and increments attempt_count
+ * 2. If attempt_count < 3 AND another eligible helper exists in that area:
+ *    automatically assigns current_offer_helper_id to the next nearest helper with fresh 2-minute offer_expires_at
+ * 3. If attempt_count >= 3 OR no more eligible helpers remain:
+ *    updates booking status to 'manual_needed' and clears current_offer_helper_id
  */
-export async function cascadeOfferToNextHelper(
+export async function handleHelperDeclineOrTimeout(
+  bookingId: string,
+  helperId: string,
+  options?: {
+    serviceCategory?: string;
+    customerArea?: string;
+    existingRejectedIds?: string[];
+    localWorkers?: Worker[];
+    currentAttemptCount?: number;
+  }
+): Promise<DispatchInitiationResult> {
+  let serviceCategory = options?.serviceCategory || 'cook';
+  let customerArea = options?.customerArea || 'Deoria';
+  let rejectedIds = options?.existingRejectedIds || [];
+
+  // If Supabase is connected, retrieve real booking info if available
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data: b } = await supabase
+        .from('bookings')
+        .select('service, area, rejected_helper_ids, attempt_count')
+        .eq('id', bookingId)
+        .maybeSingle();
+
+      if (b) {
+        if (b.service) serviceCategory = b.service;
+        if (b.area) customerArea = b.area;
+        if (Array.isArray(b.rejected_helper_ids)) {
+          rejectedIds = b.rejected_helper_ids;
+        }
+      }
+    } catch (err) {
+      console.warn('Fetch booking on decline fallback:', err);
+    }
+  }
+
+  const updatedRejected = Array.from(new Set([...rejectedIds, helperId]));
+
+  // If attempts reach 3 or more:
+  if (updatedRejected.length >= 3) {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('bookings')
+          .update({
+            status: 'manual_needed',
+            current_offer_helper_id: null,
+            offer_expires_at: null,
+            attempt_count: 3,
+            rejected_helper_ids: updatedRejected,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', bookingId);
+      } catch (err) {
+        console.warn('Supabase mark manual_needed error:', err);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('madadmitra:booking_status_updated', {
+          detail: { bookingId, status: 'manual_needed', attempt_count: 3 },
+        })
+      );
+    }
+
+    return {
+      bookingId,
+      status: 'manual_needed',
+      current_offer_helper_id: null,
+      assigned_helper: null,
+      offer_expires_at: null,
+      attempt_count: 3,
+      rejected_helper_ids: updatedRejected,
+    };
+  }
+
+  // If attempt_count < 3 and eligible helper exists:
+  return initiateAutoDispatch({
+    bookingId,
+    serviceCategory,
+    customerArea,
+    rejectedHelperIds: updatedRejected,
+    localWorkers: options?.localWorkers,
+  });
+}
+
+/**
+ * Backward compatibility alias for handleHelperDeclineOrTimeout
+ */
+export const cascadeOfferToNextHelper = (
   bookingId: string,
   serviceCategory: string,
   customerArea: string,
   rejectedHelperId: string,
   existingRejectedIds: string[] = [],
   localWorkers: Worker[] = []
-): Promise<DispatchInitiationResult> {
-  const updatedRejected = Array.from(new Set([...existingRejectedIds, rejectedHelperId]));
-
-  return initiateAutoDispatch({
-    bookingId,
+) =>
+  handleHelperDeclineOrTimeout(bookingId, rejectedHelperId, {
     serviceCategory,
     customerArea,
-    rejectedHelperIds: updatedRejected,
+    existingRejectedIds,
     localWorkers,
   });
-}
 
 /**
- * When helper accepts the offer:
- * Transition status to 'assigned' and lock assigned_helper_id
+ * On Accept:
+ * Update booking status to 'assigned', set assigned_helper_id to this helper,
+ * clear offer_expires_at, and broadcast immediately so the customer sees the assigned helper.
  */
-export async function acceptHelperOffer(
+export async function handleHelperAccept(
   bookingId: string,
-  helperId: string,
-  helperName: string
+  helper: Worker | { id: string; name: string }
 ): Promise<{ success: boolean; message: string }> {
   if (isSupabaseConfigured && supabase) {
     try {
@@ -439,22 +619,111 @@ export async function acceptHelperOffer(
         .from('bookings')
         .update({
           status: 'assigned',
-          assigned_helper_id: helperId,
+          assigned_helper_id: helper.id,
+          worker_id: helper.id,
+          worker_name: helper.name,
           current_offer_helper_id: null,
           offer_expires_at: null,
-          worker_id: helperId,
-          worker_name: helperName,
           updated_at: new Date().toISOString(),
         })
         .eq('id', bookingId);
+
+      const channel = supabase.channel(`booking_updates:${bookingId}`);
+      await channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.send({
+            type: 'broadcast',
+            event: 'booking_assigned',
+            payload: {
+              bookingId,
+              helperId: helper.id,
+              helperName: helper.name,
+              status: 'assigned',
+            },
+          });
+        }
+      });
     } catch (err) {
       console.warn('Supabase acceptHelperOffer error:', err);
     }
   }
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('madadmitra:booking_assigned', {
+        detail: { bookingId, helper },
+      })
+    );
+    window.dispatchEvent(
+      new CustomEvent('madadmitra:booking_status_updated', {
+        detail: { bookingId, status: 'assigned', helper },
+      })
+    );
+  }
+
   return {
     success: true,
     message: 'Booking successfully accepted and assigned!',
+  };
+}
+
+export const acceptHelperOffer = (bookingId: string, helperId: string, helperName: string) =>
+  handleHelperAccept(bookingId, { id: helperId, name: helperName });
+
+/**
+ * Subscribes to real-time changes on bookings where current_offer_helper_id === helperId
+ * and status === 'searching_helper'.
+ */
+export function subscribeToHelperOffers(
+  helperId: string,
+  onOffer: (offer: any) => void
+): () => void {
+  let channel: any = null;
+
+  if (isSupabaseConfigured && supabase) {
+    channel = supabase
+      .channel(`helper_offers_${helperId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `current_offer_helper_id=eq.${helperId}`,
+        },
+        (payload) => {
+          const newBooking = payload.new as any;
+          if (newBooking && newBooking.status === 'searching_helper') {
+            onOffer(newBooking);
+          }
+        }
+      )
+      .on('broadcast', { event: 'job_offer_received' }, (payload) => {
+        if (payload.payload?.helperId === helperId) {
+          onOffer(payload.payload);
+        }
+      })
+      .subscribe();
+  }
+
+  const handleMockOffer = (e: Event) => {
+    const customEvent = e as CustomEvent;
+    if (customEvent.detail && customEvent.detail.helperId === helperId) {
+      onOffer(customEvent.detail);
+    }
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('madadmitra:mock_job_offer', handleMockOffer);
+  }
+
+  return () => {
+    if (channel && supabase) {
+      supabase.removeChannel(channel);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('madadmitra:mock_job_offer', handleMockOffer);
+    }
   };
 }
 

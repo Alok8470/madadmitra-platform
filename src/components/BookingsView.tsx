@@ -19,6 +19,9 @@ import type { Booking } from '../types';
 import Modal from './Modal';
 
 const statusStyle: Record<Booking['status'], string> = {
+  searching_helper: 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse',
+  assigned: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+  manual_needed: 'bg-rose-50 text-rose-800 border-rose-300',
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
   broadcasted: 'bg-purple-50 text-purple-700 border-purple-200',
   accepted: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -48,7 +51,10 @@ export default function BookingsView() {
         b.status === 'in_progress' ||
         b.status === 'broadcasted' ||
         b.status === 'pending' ||
-        b.status === 'en_route'
+        b.status === 'en_route' ||
+        b.status === 'searching_helper' ||
+        b.status === 'assigned' ||
+        b.status === 'manual_needed'
       );
     }
     return b.status === tab;
@@ -193,8 +199,59 @@ export default function BookingsView() {
                   </div>
                 </div>
 
-                {/* MadadMitra Security OTP Box (For Upcoming Bookings) */}
-                {b.status === 'upcoming' && (
+                {/* SEARCHING HELPER STATUS CARD */}
+                {b.status === 'searching_helper' && (
+                  <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-300 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="badge bg-amber-200 text-amber-900 font-black text-xs flex items-center gap-1.5 px-3 py-1">
+                        <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+                        <span>Searching Dispatch Radar</span>
+                      </span>
+                      <span className="text-xs font-bold text-amber-800">
+                        Checking nearby partners (Attempt {b.attempt_count || 1} of 3)...
+                      </span>
+                    </div>
+                    <h4 className="font-display text-base font-black text-slate-900">
+                      Finding the nearest verified helper in your area...
+                    </h4>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      MadadMitra dispatch algorithm is reserving the nearest online & Aadhaar-verified partner in {b.area}.
+                    </p>
+                  </div>
+                )}
+
+                {/* MANUAL NEEDED HIGH DEMAND CARD */}
+                {b.status === 'manual_needed' && (
+                  <div className="mt-4 rounded-2xl bg-rose-50 border border-rose-300 p-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="badge bg-rose-100 text-rose-900 font-black text-xs flex items-center gap-1.5 px-3 py-1">
+                        <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                        <span>Manual Assignment in Progress</span>
+                      </span>
+                      <span className="text-xs font-bold text-rose-800">Priority Desk</span>
+                    </div>
+                    <div className="p-3 bg-white/90 rounded-xl border border-rose-200">
+                      <p className="text-sm font-bold text-rose-950">
+                        High demand in your area — our team is manually assigning a verified partner for you shortly.
+                      </p>
+                      <p className="text-xs text-slate-600 mt-1">
+                        Our Deoria nodal team is directly assigning the nearest available verified partner.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <a
+                        href="tel:9450000000"
+                        className="btn bg-rose-600 hover:bg-rose-500 text-white py-2 px-3.5 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Phone className="h-3.5 w-3.5" />
+                        <span>Call Deoria Helpdesk (+91 94500 00000)</span>
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* MadadMitra Security OTP Box (For Upcoming / Assigned / Accepted Bookings) */}
+                {(b.status === 'upcoming' || b.status === 'assigned' || b.status === 'accepted') && (
                   <div className="mt-5 rounded-2xl bg-amber-50/80 border border-amber-200/80 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-200/60 text-amber-800">
@@ -212,7 +269,7 @@ export default function BookingsView() {
                     <div className="flex items-center gap-2 self-start sm:self-auto">
                       <span className="text-xs font-semibold text-amber-800">OTP:</span>
                       <span className="rounded-xl bg-white px-3.5 py-1.5 font-mono text-base font-extrabold tracking-widest text-slate-900 shadow-sm border border-amber-200">
-                        {mockOtp}
+                        {b.startJobOtp || mockOtp}
                       </span>
                     </div>
                   </div>

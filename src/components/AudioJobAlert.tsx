@@ -9,8 +9,12 @@ interface AudioJobAlertProps {
   serviceTitleEn?: string;
   estimatedFee: number;
   distanceKm?: number;
+  offerExpiresAt?: string | null;
+  attemptCount?: number;
+  customerName?: string;
   onAccept: () => void;
   onDecline: () => void;
+  onTimeout?: () => void;
 }
 
 export const AudioJobAlert: React.FC<AudioJobAlertProps> = ({
@@ -19,17 +23,34 @@ export const AudioJobAlert: React.FC<AudioJobAlertProps> = ({
   serviceTitleEn,
   estimatedFee,
   distanceKm = 1.2,
+  offerExpiresAt,
+  attemptCount,
+  customerName,
   onAccept,
   onDecline,
+  onTimeout,
 }) => {
   const { language } = useLanguage();
   const isHi = language === 'hi';
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(45);
+
+  const calculateInitialSeconds = () => {
+    if (offerExpiresAt) {
+      const diff = Math.floor((new Date(offerExpiresAt).getTime() - Date.now()) / 1000);
+      return Math.max(0, Math.min(120, diff));
+    }
+    return 120;
+  };
+
+  const [secondsLeft, setSecondsLeft] = useState<number>(calculateInitialSeconds);
   const [swipeProgress, setSwipeProgress] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const sliderTrackRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSecondsLeft(calculateInitialSeconds());
+  }, [offerExpiresAt]);
 
   const startPlayback = () => {
     setIsPlaying(true);
@@ -56,14 +77,18 @@ export const AudioJobAlert: React.FC<AudioJobAlertProps> = ({
     };
   }, [areaName, serviceTitleHi, serviceTitleEn]);
 
-  // 45-second dispatch countdown timer
+  // 2-Minute dispatch countdown timer
   useEffect(() => {
     if (secondsLeft <= 0) {
-      handleDecline();
+      if (onTimeout) {
+        onTimeout();
+      } else {
+        handleDecline();
+      }
       return;
     }
     const timer = setInterval(() => {
-      setSecondsLeft((prev) => prev - 1);
+      setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(timer);
   }, [secondsLeft]);
@@ -77,6 +102,12 @@ export const AudioJobAlert: React.FC<AudioJobAlertProps> = ({
   const handleDecline = () => {
     stopJobSpeech();
     onDecline();
+  };
+
+  const formatTimer = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const remainder = secs % 60;
+    return `${mins.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
   };
 
   // Touch / Mouse Swipe logic for 1-Swipe Accept
@@ -107,11 +138,11 @@ export const AudioJobAlert: React.FC<AudioJobAlertProps> = ({
       {/* Background Amber Glow */}
       <div className="absolute top-0 right-0 h-44 w-44 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Countdown Progress Bar */}
+      {/* Countdown Progress Bar (2-Minute Window) */}
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-800">
         <div
           className="h-full bg-gradient-to-r from-amber-400 to-rose-500 transition-all duration-1000 ease-linear"
-          style={{ width: `${(secondsLeft / 45) * 100}%` }}
+          style={{ width: `${Math.min(100, Math.max(0, (secondsLeft / 120) * 100))}%` }}
         />
       </div>
 
@@ -126,12 +157,18 @@ export const AudioJobAlert: React.FC<AudioJobAlertProps> = ({
             <BellRing className="h-4 w-4 text-amber-400 animate-bounce" />
             {isHi ? 'नया काम उपलब्ध है!' : 'NEW BOOKING ALERT!'}
           </span>
+          {attemptCount && attemptCount > 1 && (
+            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/30 font-bold">
+              Attempt #{attemptCount}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-mono bg-rose-500/20 text-rose-300 px-2.5 py-0.5 rounded-full border border-rose-500/30 font-bold flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {secondsLeft}s
+          <span className="text-xs font-mono bg-rose-500/20 text-rose-300 px-2.5 py-1 rounded-full border border-rose-500/30 font-bold flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 animate-spin" />
+            <span>{formatTimer(secondsLeft)}</span>
+            <span className="text-[10px] text-rose-400 hidden sm:inline">(2-Min Window)</span>
           </span>
           <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30 font-bold flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -271,21 +308,21 @@ export const AudioJobAlert: React.FC<AudioJobAlertProps> = ({
         </div>
       </div>
 
-      {/* Standard Action Buttons (Fallback / Fast 1-Tap) */}
+      {/* Standard Action Buttons (Accept Job & Decline) */}
       <div className="grid grid-cols-2 gap-3 pt-1">
         <button
           onClick={handleDecline}
-          className="h-14 rounded-2xl bg-rose-900/60 hover:bg-rose-800 text-rose-200 font-extrabold text-sm flex items-center justify-center gap-1.5 border border-rose-700/60 transition-all active:scale-95"
+          className="h-14 rounded-2xl bg-rose-950/70 hover:bg-rose-900 text-rose-200 font-extrabold text-sm flex items-center justify-center gap-1.5 border-2 border-rose-600/70 transition-all active:scale-95 shadow-md"
         >
           <X className="h-4 w-4" />
-          <span>{isHi ? 'मना करें (छोड़ें)' : 'Decline (Pass)'}</span>
+          <span>{isHi ? 'मना करें (Decline)' : 'Decline'}</span>
         </button>
         <button
           onClick={handleAccept}
-          className="h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-1.5 shadow-soft border-2 border-emerald-400 transition-all active:scale-95"
+          className="h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-elevated border-2 border-emerald-400 transition-all active:scale-95"
         >
-          <Check className="h-5 w-5" />
-          <span>{isHi ? 'स्वीकार करें' : 'Quick Accept'}</span>
+          <Check className="h-5 w-5 stroke-[2.5]" />
+          <span>{isHi ? 'काम स्वीकार करें (Accept Job)' : 'Accept Job'}</span>
         </button>
       </div>
     </div>

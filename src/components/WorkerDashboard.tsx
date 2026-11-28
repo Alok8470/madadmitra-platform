@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Power,
   Star,
@@ -23,6 +23,25 @@ import type { Booking, Worker } from '../types';
 import AudioJobAlert from './AudioJobAlert';
 import Modal from './Modal';
 import AadhaarVerificationCard from './AadhaarVerificationCard';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import {
+  subscribeToHelperOffers,
+  handleHelperAccept,
+  handleHelperDeclineOrTimeout,
+} from '../services/dispatchService';
+
+interface IncomingJobOffer {
+  bookingId: string;
+  serviceCategory: string;
+  customerArea: string;
+  customerName?: string;
+  customerPhone?: string;
+  address?: string;
+  totalAmount: number;
+  offerExpiresAt: string | null;
+  attemptCount: number;
+  distanceKm?: number;
+}
 
 export default function WorkerDashboard() {
   const { workers, toggleWorkerOnline, bookings, addBooking, cancelBooking, setView, currentUser, openAuthModal } = useApp();
@@ -33,6 +52,7 @@ export default function WorkerDashboard() {
   const [sikkaBalance, setSikkaBalance] = useState(5); // Default 5 free lead tokens
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [showIncomingAlert, setShowIncomingAlert] = useState(false);
+  const [incomingOffer, setIncomingOffer] = useState<IncomingJobOffer | null>(null);
   const [startOtpInputs, setStartOtpInputs] = useState<Record<string, string>>({});
   const [endOtpInputs, setEndOtpInputs] = useState<Record<string, string>>({});
   const [otpErrors, setOtpErrors] = useState<Record<string, string>>({});
@@ -227,6 +247,72 @@ export default function WorkerDashboard() {
   const activeBookings = myBookings.filter((b) => b.status === 'accepted' || b.status === 'in_progress');
   const completedJobs = myBookings.filter((b) => b.status === 'completed').length;
 
+  // Real-time subscription to incoming dispatch offers
+  useEffect(() => {
+    if (!me?.id) return;
+
+    // 1. Initial check for existing active offer on bookings table
+    if (isSupabaseConfigured && supabase) {
+      supabase
+        .from('bookings')
+        .select('*')
+        .eq('current_offer_helper_id', me.id)
+        .eq('status', 'searching_helper')
+        .gt('offer_expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setIncomingOffer({
+              bookingId: data.id,
+              serviceCategory: data.service || me.service,
+              customerArea: data.area || me.area,
+              customerName: data.customer_name,
+              customerPhone: data.customer_phone,
+              address: data.address,
+              totalAmount: Number(data.total_amount) || me.pricePerVisit || 200,
+              offerExpiresAt: data.offer_expires_at,
+              attemptCount: data.attempt_count || 1,
+              distanceKm: 1.2,
+            });
+            setShowIncomingAlert(true);
+          }
+        });
+    }
+
+    // 2. Real-time subscription to postgres_changes and broadcast channel
+    const unsubscribe = subscribeToHelperOffers(me.id, (payload: any) => {
+      const bId = payload.bookingId || payload.id;
+      const srv = payload.serviceCategory || payload.service || me.service;
+      const area = payload.customerArea || payload.area || me.area;
+      const fee = Number(payload.totalAmount || payload.total_amount) || me.pricePerVisit || 200;
+      const expires =
+        payload.offerExpiresAt ||
+        payload.offer_expires_at ||
+        new Date(Date.now() + 120000).toISOString();
+      const attempts = payload.attemptCount || payload.attempt_count || 1;
+
+      setIncomingOffer({
+        bookingId: bId,
+        serviceCategory: srv,
+        customerArea: area,
+        customerName: payload.customerName || payload.customer_name,
+        customerPhone: payload.customerPhone || payload.customer_phone,
+        address: payload.address,
+        totalAmount: fee,
+        offerExpiresAt: expires,
+        attemptCount: attempts,
+        distanceKm: payload.distanceKm || 1.2,
+      });
+      setShowIncomingAlert(true);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [me?.id, me?.area, me?.service, me?.pricePerVisit]);
+
   const handleToggle = () => {
     setAnimating(true);
     toggleWorkerOnline(me.id);
@@ -234,41 +320,87 @@ export default function WorkerDashboard() {
   };
 
   const handleSimulateAlert = () => {
+    const demoBookingId = `DEMO-BK-${Date.now().toString().slice(-4)}`;
+    const expiresAt = new Date(Date.now() + 120 * 1000).toISOString();
+    setIncomingOffer({
+      bookingId: demoBookingId,
+      serviceCategory: me.service,
+      customerArea: me.area,
+      customerName: 'Anoop Verma',
+      customerPhone: '9450123456',
+      address: `House #12, Raghav Nagar, Near Malviya Road, ${me.area}`,
+      totalAmount: me.pricePerVisit || 250,
+      offerExpiresAt: expiresAt,
+      attemptCount: 1,
+      distanceKm: 0.9,
+    });
     setShowIncomingAlert(true);
   };
 
-  const handleAcceptAlert = () => {
+  const handleAcceptAlert = async () => {
     if (sikkaBalance < 1) {
-      alert(isHi ? 'आपके पास पर्याप्त सिक्के नहीं हैं। कृपया सिक्के रिचार्ज करें।' : 'Insufficient Lead Tokens. Please recharge your wallet.');
+      alert(
+        isHi
+          ? 'आपके पास पर्याप्त सिक्के नहीं हैं। कृपया सिक्के रिचार्ज करें।'
+          : 'Insufficient Lead Tokens. Please recharge your wallet.'
+      );
       setShowRechargeModal(true);
       setShowIncomingAlert(false);
       return;
     }
 
-    setSikkaBalance((prev) => prev - 1);
+    const bookingId = incomingOffer?.bookingId || `b_live_${Date.now()}`;
+    const srv = incomingOffer?.serviceCategory || me.service;
+    const fee = incomingOffer?.totalAmount || me.pricePerVisit || 250;
+    const area = incomingOffer?.customerArea || me.area;
+    const addr = incomingOffer?.address || `Customer location in ${area}`;
+
+    setSikkaBalance((prev) => Math.max(0, prev - 1));
     setShowIncomingAlert(false);
 
-    // Create a new active accepted booking
+    // Call acceptHelperOffer to update Supabase in real-time
+    await handleHelperAccept(bookingId, me);
+
+    // Create / add the active accepted booking locally
     const newBooking: Booking = {
-      id: `b_live_${Date.now()}`,
+      id: bookingId,
       bookingCode: `MM-${Math.floor(100000 + Math.random() * 900000)}`,
       workerName: me.name,
       workerId: me.id,
-      service: me.service,
-      customerName: 'Sunil Agarwal',
-      customerPhone: '9837124589',
+      service: srv as any,
+      customerName: incomingOffer?.customerName || 'Sunil Agarwal',
+      customerPhone: incomingOffer?.customerPhone || '9837124589',
       date: new Date().toISOString().slice(0, 10),
       time: 'Immediate Dispatch',
       status: 'accepted',
       paymentStatus: 'paid_cash_cod',
       fee: 15,
-      totalAmount: 250,
-      area: me.area,
-      address: `House No. 42, Block C, Near Radha Swamy Satsang, ${me.area}`,
+      totalAmount: fee,
+      area: area,
+      address: addr,
       startJobOtp: '4821',
       endJobOtp: '9134',
+      assigned_helper_id: me.id,
+      current_offer_helper_id: null,
+      offer_expires_at: null,
     };
     addBooking(newBooking);
+    setIncomingOffer(null);
+  };
+
+  const handleDeclineAlert = async () => {
+    setShowIncomingAlert(false);
+    if (!incomingOffer) return;
+
+    await handleHelperDeclineOrTimeout(incomingOffer.bookingId, me.id, {
+      serviceCategory: incomingOffer.serviceCategory,
+      customerArea: incomingOffer.customerArea,
+      existingRejectedIds: [me.id],
+      localWorkers: workers,
+      currentAttemptCount: incomingOffer.attemptCount,
+    });
+
+    setIncomingOffer(null);
   };
 
   const handleVerifyStartOtp = (booking: Booking) => {
@@ -934,17 +1066,21 @@ export default function WorkerDashboard() {
         </Modal>
       )}
 
-      {/* AUDIO JOB ALERT MODAL */}
+      {/* AUDIO JOB ALERT MODAL (2-Minute Accept Window & Realtime Job Alert) */}
       {showIncomingAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <AudioJobAlert
-            areaName={me.area}
-            serviceTitleHi={SERVICE_LABELS[me.service]}
-            serviceTitleEn={me.service}
-            estimatedFee={me.pricePerVisit + 50}
-            distanceKm={1.4}
+            areaName={incomingOffer?.customerArea || me.area}
+            serviceTitleHi={SERVICE_LABELS[(incomingOffer?.serviceCategory as any) || me.service] || incomingOffer?.serviceCategory || 'सहायक सेवा'}
+            serviceTitleEn={incomingOffer?.serviceCategory || me.service}
+            estimatedFee={incomingOffer?.totalAmount || me.pricePerVisit + 50}
+            distanceKm={incomingOffer?.distanceKm || 1.2}
+            offerExpiresAt={incomingOffer?.offerExpiresAt}
+            attemptCount={incomingOffer?.attemptCount || 1}
+            customerName={incomingOffer?.customerName}
             onAccept={handleAcceptAlert}
-            onDecline={() => setShowIncomingAlert(false)}
+            onDecline={handleDeclineAlert}
+            onTimeout={handleDeclineAlert}
           />
         </div>
       )}
