@@ -9,6 +9,8 @@ import {
   AlertTriangle,
   Clock,
   BadgeCheck,
+  ExternalLink,
+  X,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
@@ -128,9 +130,10 @@ function statusBadge(status: VerificationStatus) {
 interface ViewButtonProps {
   label: string;
   path: string | null;
+  onPreview?: (url: string) => void;
 }
 
-function ViewDocButton({ label, path }: ViewButtonProps) {
+function ViewDocButton({ label, path, onPreview }: ViewButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,7 +149,11 @@ function ViewDocButton({ label, path }: ViewButtonProps) {
         setError(signedErr?.message ?? 'Could not generate URL');
         return;
       }
-      window.open(data.signedUrl, '_blank');
+      if (onPreview) {
+        onPreview(data.signedUrl);
+      } else {
+        window.open(data.signedUrl, '_blank');
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
@@ -170,12 +177,12 @@ function ViewDocButton({ label, path }: ViewButtonProps) {
       <button
         onClick={handleView}
         disabled={loading}
-        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-60"
+        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-brand-600 transition-colors disabled:opacity-60 cursor-pointer shadow-sm"
       >
-        {loading ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
+        {loading ? <Loader2 size={12} className="animate-spin text-brand-600" /> : <Eye size={12} />}
         {label}
       </button>
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-[10px] text-red-500 font-medium">{error}</p>}
     </div>
   );
 }
@@ -225,15 +232,17 @@ interface VerificationCardProps {
   record: HelperVerification;
   onRefresh: () => void;
   onMockUpdate?: (id: string, status: VerificationStatus, reason?: string) => void;
+  onPreview?: (title: string, url: string) => void;
 }
 
-function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardProps) {
+function VerificationCard({ record, onRefresh, onMockUpdate, onPreview }: VerificationCardProps) {
   const { setWorkerVerified } = useApp();
   const [approving, setApproving] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectError, setRejectError] = useState<string | null>(null);
+  const [cleanUpStorageOnApprove, setCleanUpStorageOnApprove] = useState(false);
 
   async function handleApprove() {
     setApproving(true);
@@ -241,13 +250,35 @@ function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardP
     try {
       if (isSupabaseConfigured && supabase) {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(record.id || '');
-        const updatePayload = {
+        const updatePayload: Record<string, any> = {
           verification_status: 'verified',
           is_verified: true,
           verified_at: new Date().toISOString(),
           rejection_reason: null,
           updated_at: new Date().toISOString(),
         };
+
+        // Optionally delete raw ID images from storage to save space & protect privacy
+        if (cleanUpStorageOnApprove) {
+          const filesToDelete = [
+            record.aadhaar_front_path,
+            record.aadhaar_back_path,
+            record.selfie_path,
+          ].filter(Boolean) as string[];
+
+          if (filesToDelete.length > 0) {
+            try {
+              const { error: remErr } = await supabase.storage.from('helper-documents').remove(filesToDelete);
+              if (!remErr) {
+                updatePayload.aadhaar_front_path = null;
+                updatePayload.aadhaar_back_path = null;
+                updatePayload.selfie_path = null;
+              }
+            } catch (delErr) {
+              console.warn('Storage cleanup note:', delErr);
+            }
+          }
+        }
 
         if (isUuid) {
           const { error } = await supabase.from('helpers').update(updatePayload).eq('id', record.id);
@@ -365,20 +396,42 @@ function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardP
 
       {/* Document view buttons */}
       <div className="flex flex-wrap gap-2">
-        <ViewDocButton label="View Front" path={record.aadhaar_front_path} />
-        <ViewDocButton label="View Back" path={record.aadhaar_back_path} />
-        <ViewDocButton label="View Selfie" path={record.selfie_path} />
+        <ViewDocButton
+          label="View Front"
+          path={record.aadhaar_front_path}
+          onPreview={(url) => onPreview?.(`${record.helper_name ?? 'Helper'} — Aadhaar Front`, url)}
+        />
+        <ViewDocButton
+          label="View Back"
+          path={record.aadhaar_back_path}
+          onPreview={(url) => onPreview?.(`${record.helper_name ?? 'Helper'} — Aadhaar Back`, url)}
+        />
+        <ViewDocButton
+          label="View Selfie"
+          path={record.selfie_path}
+          onPreview={(url) => onPreview?.(`${record.helper_name ?? 'Helper'} — Live Selfie`, url)}
+        />
       </div>
 
       {/* Admin actions — for pending, unsubmitted, or rejected helpers */}
       {record.verification_status !== 'verified' ? (
-        <div className="border-t border-slate-100 pt-3 space-y-2">
+        <div className="border-t border-slate-100 pt-3 space-y-2.5">
+          <label className="flex items-center gap-2 text-[11px] text-slate-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={cleanUpStorageOnApprove}
+              onChange={(e) => setCleanUpStorageOnApprove(e.target.checked)}
+              className="rounded text-brand-600 focus:ring-brand-500 h-3.5 w-3.5"
+            />
+            <span>Delete raw ID images from storage on approve (saves storage space & protects privacy)</span>
+          </label>
+
           {!showRejectForm && (
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={handleApprove}
                 disabled={approving}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors cursor-pointer shadow-sm"
               >
                 {approving
                   ? <Loader2 size={12} className="animate-spin" />
@@ -440,6 +493,7 @@ export default function AdminVerificationPanel() {
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const [previewModal, setPreviewModal] = useState<{ title: string; url: string } | null>(null);
 
   const fetchRecords = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase) {
@@ -618,6 +672,7 @@ export default function AdminVerificationPanel() {
               record={record}
               onRefresh={fetchRecords}
               onMockUpdate={handleMockUpdate}
+              onPreview={(title, url) => setPreviewModal({ title, url })}
             />
           ))}
         </div>
@@ -632,6 +687,54 @@ export default function AdminVerificationPanel() {
               ? 'No pending verifications — all clear!'
               : `No ${activeTab === 'all' ? '' : activeTab + ' '}records found.`}
           </p>
+        </div>
+      )}
+
+      {/* Lightbox Document Preview Modal */}
+      {previewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="relative max-w-2xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between p-3.5 border-b border-slate-100 bg-slate-50">
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4 text-brand-600" />
+                <h3 className="font-bold text-slate-900 text-sm">{previewModal.title}</h3>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={previewModal.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-200 transition-colors"
+                  title="Open full size in new tab"
+                >
+                  <ExternalLink size={16} />
+                </a>
+                <button
+                  onClick={() => setPreviewModal(null)}
+                  className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                  title="Close preview"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 flex items-center justify-center bg-slate-950/5 min-h-[300px] max-h-[72vh] overflow-auto">
+              <img
+                src={previewModal.url}
+                alt={previewModal.title}
+                className="max-h-[66vh] w-auto object-contain rounded-lg shadow-sm"
+              />
+            </div>
+            <div className="p-3 border-t border-slate-100 bg-slate-50 flex justify-between items-center text-xs text-slate-500">
+              <span>Secure preview generated via Supabase signed URL (300s expiry)</span>
+              <button
+                onClick={() => setPreviewModal(null)}
+                className="btn py-1 px-3 text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

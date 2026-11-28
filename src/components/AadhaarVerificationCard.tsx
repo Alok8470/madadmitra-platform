@@ -11,6 +11,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { compressImage } from '../lib/imageCompressor';
 import type { HelperVerification, VerificationStatus } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -347,63 +348,84 @@ export default function AadhaarVerificationCard({
     setSuccessMsg(null);
 
     try {
-      // Upload front
+      // 1. Client-Side Image Auto-Compression before upload (max 1280px, quality 0.75, < ~300KB)
+      const [compressedFront, compressedBack, compressedSelfie] = await Promise.all([
+        compressImage(frontFile!, { maxWidth: 1280, maxHeight: 1280, quality: 0.75 }),
+        compressImage(backFile!, { maxWidth: 1280, maxHeight: 1280, quality: 0.75 }),
+        compressImage(selfieFile!, { maxWidth: 1280, maxHeight: 1280, quality: 0.75 }),
+      ]);
+
+      // 2. Clean storage paths with timestamp
+      const timestamp = Date.now();
+      const frontPath = `${userId}/aadhaar_front_${timestamp}.jpg`;
+      const backPath = `${userId}/aadhaar_back_${timestamp}.jpg`;
+      const selfiePath = `${userId}/selfie_${timestamp}.jpg`;
+
+      // 3. Upload front image
       const { data: frontData, error: frontErr } = await supabase.storage
         .from('helper-documents')
-        .upload(`${userId}/aadhaar_front`, frontFile!, { upsert: true });
-      if (frontErr) throw new Error(t('uploadError', lang));
+        .upload(frontPath, compressedFront, { contentType: 'image/jpeg', upsert: true });
+      if (frontErr) throw new Error(`Front Aadhaar upload failed: ${frontErr.message}`);
 
-      // Upload back
+      // 4. Upload back image
       const { data: backData, error: backErr } = await supabase.storage
         .from('helper-documents')
-        .upload(`${userId}/aadhaar_back`, backFile!, { upsert: true });
-      if (backErr) throw new Error(t('uploadError', lang));
+        .upload(backPath, compressedBack, { contentType: 'image/jpeg', upsert: true });
+      if (backErr) throw new Error(`Back Aadhaar upload failed: ${backErr.message}`);
 
-      // Upload selfie
+      // 5. Upload live selfie
       const { data: selfieData, error: selfieErr } = await supabase.storage
         .from('helper-documents')
-        .upload(`${userId}/selfie`, selfieFile!, { upsert: true });
-      if (selfieErr) throw new Error(t('uploadError', lang));
+        .upload(selfiePath, compressedSelfie, { contentType: 'image/jpeg', upsert: true });
+      if (selfieErr) throw new Error(`Live selfie upload failed: ${selfieErr.message}`);
 
-      // Upsert DB record in helper_verifications
+      // 6. After all 3 uploads succeed, update helper's row in public.helpers
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      const updateDocPayload = {
+        aadhaar_last4: last4,
+        aadhaar_front_path: frontData?.path || frontPath,
+        aadhaar_back_path: backData?.path || backPath,
+        selfie_path: selfieData?.path || selfiePath,
+        verification_status: 'pending' as const,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (isUuid) {
+        const { error: helperErr } = await supabase
+          .from('helpers')
+          .update(updateDocPayload)
+          .or(`id.eq.${userId},user_id.eq.${userId}`);
+        if (helperErr) throw new Error(`Failed to update helper profile: ${helperErr.message}`);
+      } else if (helperPhone) {
+        const { error: helperErr } = await supabase
+          .from('helpers')
+          .update(updateDocPayload)
+          .eq('phone', helperPhone);
+        if (helperErr) throw new Error(`Failed to update helper profile: ${helperErr.message}`);
+      }
+
+      // 7. Upsert DB record in helper_verifications for backward-compatibility
       const { error: dbErr } = await supabase.from('helper_verifications').upsert({
         helper_id: userId,
         aadhaar_last4: last4,
-        aadhaar_front_path: frontData!.path,
-        aadhaar_back_path: backData!.path,
-        selfie_path: selfieData!.path,
+        aadhaar_front_path: frontData?.path || frontPath,
+        aadhaar_back_path: backData?.path || backPath,
+        selfie_path: selfieData?.path || selfiePath,
         verification_status: 'pending',
         submitted_at: new Date().toISOString(),
         helper_name: helperName,
         helper_phone: helperPhone,
       });
-      if (dbErr) throw new Error(t('dbError', lang));
-
-      // Also directly update public.helpers table
-      try {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-        const updateDocPayload = {
-          aadhaar_last4: last4,
-          aadhaar_front_path: frontData!.path,
-          aadhaar_back_path: backData!.path,
-          selfie_path: selfieData!.path,
-          verification_status: 'pending',
-          updated_at: new Date().toISOString(),
-        };
-
-        if (isUuid) {
-          await supabase.from('helpers').update(updateDocPayload).or(`id.eq.${userId},user_id.eq.${userId}`);
-        } else if (helperPhone) {
-          await supabase.from('helpers').update(updateDocPayload).eq('phone', helperPhone);
-        }
-      } catch (helpersUpdateErr) {
-        console.warn('Sync KYC documents to public.helpers note:', helpersUpdateErr);
+      if (dbErr) {
+        console.warn('helper_verifications sync note:', dbErr.message);
       }
 
       setStatus('pending');
       setSuccessMsg(t('successMsg', lang));
     } catch (err: unknown) {
-      setToastError(err instanceof Error ? err.message : t('uploadError', lang));
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('KYC Upload failed:', err);
+      setToastError(errorMsg);
     } finally {
       setSubmitting(false);
     }
