@@ -39,6 +39,7 @@ interface AppState {
   setWorkerVerified: (idOrPhone: string, verified: boolean) => void;
   bookings: Booking[];
   addBooking: (b: Booking) => void;
+  updateBooking: (b: Booking) => void;
   cancelBooking: (id: string) => void;
   // worker dashboard
   freeBookingsLeft: number;
@@ -55,6 +56,7 @@ interface AppState {
   setCurrentUser: (u: UserProfile | null) => void;
   logout: () => void;
   addWorker: (w: Worker) => void;
+  updateWorker: (w: Worker) => void;
   // Platform Deployment / Showcase Mode
   catalogMode: CatalogMode;
   setCatalogMode: (mode: CatalogMode) => void;
@@ -180,6 +182,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addBooking = (b: Booking) => setBookings((prev) => [b, ...prev]);
 
+  const updateBooking = (b: Booking) =>
+    setBookings((prev) => {
+      const exists = prev.some((x) => x.id === b.id);
+      if (exists) {
+        return prev.map((x) => (x.id === b.id ? b : x));
+      }
+      return [b, ...prev];
+    });
+
   const cancelBooking = (id: string) =>
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' as const } : b))
@@ -192,6 +203,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const partnerWorker: Worker = { ...w, isRealPartner: true };
     setWorkers((prev) => {
       const updated = [partnerWorker, ...prev.filter((x) => x.id !== partnerWorker.id)];
+      try {
+        const liveOnly = updated.filter((x) => x.isRealPartner || x.id.startsWith('w_live_'));
+        localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(liveOnly));
+      } catch (e) {
+        console.error('Failed to save worker to local storage', e);
+      }
+      return updated;
+    });
+  };
+
+  const updateWorker = (w: Worker) => {
+    setWorkers((prev) => {
+      const updated = prev.map((x) => (x.id === w.id ? { ...x, ...w } : x));
       try {
         const liveOnly = updated.filter((x) => x.isRealPartner || x.id.startsWith('w_live_'));
         localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(liveOnly));
@@ -225,6 +249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setWorkerVerified,
       bookings,
       addBooking,
+      updateBooking,
       cancelBooking,
       freeBookingsLeft,
       decrementFreeBooking,
@@ -238,6 +263,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCurrentUser,
       logout,
       addWorker,
+      updateWorker,
       catalogMode,
       setCatalogMode,
       authModalOpen,
