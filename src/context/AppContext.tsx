@@ -57,6 +57,7 @@ interface AppState {
   logout: () => void;
   addWorker: (w: Worker) => void;
   updateWorker: (w: Worker) => void;
+  removeWorker: (id: string) => void;
   // Platform Deployment / Showcase Mode
   catalogMode: CatalogMode;
   setCatalogMode: (mode: CatalogMode) => void;
@@ -226,6 +227,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const removeWorker = (id: string) => {
+    setWorkers((prev) => {
+      const updated = prev.filter((w) => w.id !== id);
+      try {
+        const liveOnly = updated.filter((x) => x.isRealPartner || x.id.startsWith('w_live_'));
+        localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(liveOnly));
+      } catch (e) {
+        console.error('Failed to update local storage after worker delete', e);
+      }
+      return updated;
+    });
+  };
+
   const logout = () => {
     clearSession();
     setCurrentUser(null);
@@ -264,6 +278,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       logout,
       addWorker,
       updateWorker,
+      removeWorker,
       catalogMode,
       setCatalogMode,
       authModalOpen,

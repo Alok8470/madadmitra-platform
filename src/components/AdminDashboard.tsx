@@ -26,6 +26,7 @@ import {
   X,
   RefreshCw,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { SERVICE_LABELS, SERVICES } from '../data/mockData';
@@ -108,6 +109,7 @@ export default function AdminDashboard() {
     setCurrentUser,
     updateBooking,
     updateWorker,
+    removeWorker,
     addWorker,
   } = useApp();
 
@@ -124,6 +126,11 @@ export default function AdminDashboard() {
   const [selectedHelpers, setSelectedHelpers] = useState<Record<string, string>>({});
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignmentSuccessMsg, setAssignmentSuccessMsg] = useState<string>('');
+
+  // Delete Helper state
+  const [deletingWorker, setDeletingWorker] = useState<Worker | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState<string>('');
 
   // Bookings list filter & search
   const [bookingFilter, setBookingFilter] = useState<'all' | BookingStatus>('all');
@@ -527,6 +534,69 @@ export default function AdminDashboard() {
     setEditingWorker(null);
   };
 
+  // Confirm and Execute Helper Deletion
+  const handleConfirmDeleteHelper = async () => {
+    if (!deletingWorker) return;
+
+    // 1. Guard check: do not delete helper with active bookings
+    const activeBookings = bookings.filter(
+      (b) =>
+        (b.workerId === deletingWorker.id || b.assigned_helper_id === deletingWorker.id) &&
+        ['searching_helper', 'assigned', 'accepted', 'in_progress'].includes(b.status)
+    );
+
+    if (activeBookings.length > 0) {
+      setDeleteErrorMsg(
+        `Cannot remove ${deletingWorker.name}: this helper currently has ${activeBookings.length} active booking(s). Please reassign or complete those bookings first.`
+      );
+      setTimeout(() => setDeleteErrorMsg(''), 7000);
+      setDeletingWorker(null);
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      // 2. Supabase Delete Logic & RLS support
+      if (isSupabaseConfigured && supabase) {
+        // Delete from helpers table
+        try {
+          await supabase.from('helpers').delete().eq('id', deletingWorker.id);
+        } catch (err) {
+          console.warn('Delete from helpers fallback:', err);
+        }
+
+        // Delete from workers table
+        try {
+          await supabase.from('workers').delete().eq('id', deletingWorker.id);
+        } catch (err) {
+          console.warn('Delete from workers fallback:', err);
+        }
+
+        // Clean up verifications or storage metadata if present
+        try {
+          await supabase.from('helper_verifications').delete().eq('helper_id', deletingWorker.id);
+        } catch (err) {
+          console.warn('Delete helper verifications fallback:', err);
+        }
+      }
+
+      // 3. Update local state immediately
+      removeWorker(deletingWorker.id);
+
+      // 4. Success Toast Notification
+      setAssignmentSuccessMsg('Helper removed successfully');
+      setTimeout(() => setAssignmentSuccessMsg(''), 5000);
+      setDeletingWorker(null);
+    } catch (err: any) {
+      console.error('Failed to remove helper:', err);
+      setDeleteErrorMsg(err?.message || 'Failed to remove helper record.');
+      setTimeout(() => setDeleteErrorMsg(''), 6000);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 w-full max-w-full overflow-x-hidden">
       {/* Top Header */}
@@ -575,6 +645,22 @@ export default function AdminDashboard() {
           <button
             onClick={() => setAssignmentSuccessMsg('')}
             className="text-emerald-700 hover:text-emerald-950"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Error Notification Banner */}
+      {deleteErrorMsg && (
+        <div className="mt-4 p-4 rounded-2xl bg-rose-50 border-2 border-rose-400 text-rose-950 font-bold text-xs flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0" />
+            <span>{deleteErrorMsg}</span>
+          </div>
+          <button
+            onClick={() => setDeleteErrorMsg('')}
+            className="text-rose-700 hover:text-rose-950"
           >
             <X className="h-4 w-4" />
           </button>
@@ -1310,13 +1396,23 @@ export default function AdminDashboard() {
 
                       {/* Actions */}
                       <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => setEditingWorker(w)}
-                          className="btn py-1 px-2.5 text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg inline-flex items-center gap-1"
-                        >
-                          <Edit className="h-3 w-3" />
-                          <span>Edit Areas</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setEditingWorker(w)}
+                            className="btn py-1 px-2.5 text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg inline-flex items-center gap-1"
+                          >
+                            <Edit className="h-3 w-3" />
+                            <span>Edit Areas</span>
+                          </button>
+                          <button
+                            onClick={() => setDeletingWorker(w)}
+                            className="btn py-1 px-2.5 text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg inline-flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Remove Helper"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span>Remove</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1726,6 +1822,79 @@ export default function AdminDashboard() {
                 className="btn-primary text-xs py-2 px-5 font-bold"
               >
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL: CONFIRM DELETE HELPER                                         */}
+      {/* ==================================================================== */}
+      {deletingWorker && (
+        <Modal
+          open={!!deletingWorker}
+          onClose={() => !isDeleting && setDeletingWorker(null)}
+          title="Confirm Helper Removal"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-950 text-xs">
+              <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm text-rose-900">
+                  Are you sure you want to remove {deletingWorker.name}? This action cannot be undone.
+                </p>
+                <p className="mt-1 text-slate-600 text-xs leading-relaxed">
+                  All database records, KYC verifications, and partner links for this helper will be permanently removed from the system.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Service Category:</span>
+                <span className="font-bold text-slate-900">
+                  {SERVICE_LABELS[deletingWorker.service] || deletingWorker.service}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Phone:</span>
+                <span className="font-mono text-slate-900">{deletingWorker.phone || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Primary Area:</span>
+                <span className="font-semibold text-slate-900">
+                  {deletingWorker.primary_area || deletingWorker.area || 'Deoria'}
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeletingWorker(null)}
+                className="btn-ghost text-xs py-2 px-4 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDeleteHelper}
+                className="btn bg-rose-600 hover:bg-rose-500 text-white text-xs py-2 px-4 font-bold rounded-xl shadow-soft flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Removing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Yes, Remove Helper</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
