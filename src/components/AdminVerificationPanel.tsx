@@ -85,8 +85,9 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { key: 'all', label: 'All' },
+  { key: 'all', label: 'All Helpers' },
   { key: 'pending', label: 'Pending Review' },
+  { key: 'unsubmitted', label: 'Unsubmitted KYC' },
   { key: 'verified', label: 'Verified' },
   { key: 'rejected', label: 'Rejected' },
 ];
@@ -238,19 +239,38 @@ function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardP
     setApproving(true);
     setApproveError(null);
     try {
-      if (isSupabaseConfigured) {
-        const { error } = await supabase
-          .from('helper_verifications')
-          .update({
-            verification_status: 'verified',
-            verified_at: new Date().toISOString(),
-            rejection_reason: null,
-          })
-          .eq('id', record.id as string);
-        if (error) { setApproveError(error.message); return; }
+      if (isSupabaseConfigured && supabase) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(record.id || '');
+        const updatePayload = {
+          verification_status: 'verified',
+          is_verified: true,
+          verified_at: new Date().toISOString(),
+          rejection_reason: null,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (isUuid) {
+          const { error } = await supabase.from('helpers').update(updatePayload).eq('id', record.id);
+          if (error) { setApproveError(error.message); return; }
+        } else if (record.helper_phone) {
+          const { error } = await supabase.from('helpers').update(updatePayload).eq('phone', record.helper_phone);
+          if (error) { setApproveError(error.message); return; }
+        }
+
+        // Also update helper_verifications if record exists
+        try {
+          await supabase
+            .from('helper_verifications')
+            .update({
+              verification_status: 'verified',
+              verified_at: new Date().toISOString(),
+              rejection_reason: null,
+            })
+            .eq('id', record.id as string);
+        } catch {}
       }
       // Reflect verified status on the helper's public profile immediately
-      setWorkerVerified(record.helper_id || record.helper_phone || record.helper_name || '', true, 'verified');
+      setWorkerVerified(record.helper_id || record.id || record.helper_phone || record.helper_name || '', true, 'verified');
       onMockUpdate?.(record.id as string, 'verified');
       onRefresh();
     } catch (e: unknown) {
@@ -264,18 +284,36 @@ function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardP
     setRejecting(true);
     setRejectError(null);
     try {
-      if (isSupabaseConfigured) {
-        const { error } = await supabase
-          .from('helper_verifications')
-          .update({
-            verification_status: 'rejected',
-            rejection_reason: reason,
-          })
-          .eq('id', record.id as string);
-        if (error) { setRejectError(error.message); return; }
+      if (isSupabaseConfigured && supabase) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(record.id || '');
+        const updatePayload = {
+          verification_status: 'rejected',
+          is_verified: false,
+          rejection_reason: reason,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (isUuid) {
+          const { error } = await supabase.from('helpers').update(updatePayload).eq('id', record.id);
+          if (error) { setRejectError(error.message); return; }
+        } else if (record.helper_phone) {
+          const { error } = await supabase.from('helpers').update(updatePayload).eq('phone', record.helper_phone);
+          if (error) { setRejectError(error.message); return; }
+        }
+
+        // Also update helper_verifications if record exists
+        try {
+          await supabase
+            .from('helper_verifications')
+            .update({
+              verification_status: 'rejected',
+              rejection_reason: reason,
+            })
+            .eq('id', record.id as string);
+        } catch {}
       }
       // Reflect rejected status on the helper's public profile
-      setWorkerVerified(record.helper_id || record.helper_phone || record.helper_name || '', false, 'rejected', reason);
+      setWorkerVerified(record.helper_id || record.id || record.helper_phone || record.helper_name || '', false, 'rejected', reason);
       onMockUpdate?.(record.id as string, 'rejected', reason);
       setShowRejectForm(false);
       onRefresh();
@@ -332,15 +370,15 @@ function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardP
         <ViewDocButton label="View Selfie" path={record.selfie_path} />
       </div>
 
-      {/* Admin actions — only for pending */}
-      {record.verification_status === 'pending' && (
+      {/* Admin actions — for pending, unsubmitted, or rejected helpers */}
+      {record.verification_status !== 'verified' ? (
         <div className="border-t border-slate-100 pt-3 space-y-2">
           {!showRejectForm && (
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={handleApprove}
                 disabled={approving}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 {approving
                   ? <Loader2 size={12} className="animate-spin" />
@@ -349,7 +387,7 @@ function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardP
               </button>
               <button
                 onClick={() => setShowRejectForm(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
               >
                 <XCircle size={12} /> ✗ Reject
               </button>
@@ -365,6 +403,29 @@ function VerificationCard({ record, onRefresh, onMockUpdate }: VerificationCardP
           )}
           {rejectError && <p className="text-xs text-red-500">{rejectError}</p>}
         </div>
+      ) : (
+        <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
+          <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+            <CheckCircle2 size={13} /> Active & Verified in Catalog
+          </span>
+          {!showRejectForm && (
+            <button
+              onClick={() => setShowRejectForm(true)}
+              className="text-[11px] font-semibold text-red-600 hover:text-red-700 underline cursor-pointer"
+            >
+              Revoke / Reject Verification
+            </button>
+          )}
+          {showRejectForm && (
+            <div className="w-full mt-2">
+              <RejectForm
+                onConfirm={handleReject}
+                onCancel={() => { setShowRejectForm(false); setRejectError(null); }}
+                submitting={rejecting}
+              />
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -378,22 +439,45 @@ export default function AdminVerificationPanel() {
   const [records, setRecords] = useState<HelperVerification[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('pending');
+  const [activeTab, setActiveTab] = useState<TabKey>('all');
 
   const fetchRecords = useCallback(async () => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !supabase) {
       setRecords(MOCK_DATA);
       return;
     }
     setLoading(true);
     setFetchError(null);
     try {
+      // 1. Primary: fetch all helpers directly from public.helpers table
       const { data, error } = await supabase
-        .from('helper_verifications')
+        .from('helpers')
         .select('*')
-        .order('submitted_at', { ascending: false });
-      if (error) { setFetchError(error.message); return; }
-      setRecords((data as HelperVerification[]) ?? []);
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Failed to fetch from helpers table:', error.message);
+        setFetchError(error.message);
+        return;
+      }
+
+      if (Array.isArray(data)) {
+        const mappedRecords: HelperVerification[] = data.map((row: any) => ({
+          id: row.id,
+          helper_id: row.id,
+          helper_name: row.full_name || row.name || 'Service Partner',
+          helper_phone: row.phone || '',
+          aadhaar_last4: row.aadhaar_last4 || '••••',
+          aadhaar_front_path: row.aadhaar_front_path || null,
+          aadhaar_back_path: row.aadhaar_back_path || null,
+          selfie_path: row.selfie_path || null,
+          verification_status: (row.verification_status as VerificationStatus) || 'unsubmitted',
+          rejection_reason: row.rejection_reason || null,
+          submitted_at: row.created_at || null,
+          verified_at: row.verified_at || null,
+        }));
+        setRecords(mappedRecords);
+      }
     } catch (e: unknown) {
       setFetchError(e instanceof Error ? e.message : 'Failed to fetch records');
     } finally {
@@ -401,7 +485,27 @@ export default function AdminVerificationPanel() {
     }
   }, []);
 
-  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+  useEffect(() => {
+    fetchRecords();
+
+    // Subscribe to Supabase Realtime changes on public.helpers
+    if (isSupabaseConfigured && supabase) {
+      const channel = supabase
+        .channel('admin_kyc_helpers_realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'helpers' },
+          () => {
+            fetchRecords();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [fetchRecords]);
 
   const handleMockUpdate = (id: string, newStatus: VerificationStatus, reason?: string) => {
     if (!isSupabaseConfigured) {

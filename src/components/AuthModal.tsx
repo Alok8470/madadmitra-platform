@@ -13,6 +13,7 @@ import {
 import Modal from './Modal';
 import { sendOtp, verifyOtp } from '../services/authService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { ensureValidUuid } from '../services/helperService';
 import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { SERVICE_LABELS, type ServiceId, type Worker } from '../data/mockData';
@@ -160,9 +161,52 @@ export default function AuthModal({
         const cleanPan = pan.trim().toUpperCase();
         const primaryArea = area.trim() || 'Deoria (All Areas)';
         const serviceableAreas = [primaryArea, 'Deoria (All Areas)'];
+        const helperId = ensureValidUuid();
+        const validUserId =
+          res.profile.id &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(res.profile.id)
+            ? res.profile.id
+            : null;
+
+        const helperPayload = {
+          id: helperId,
+          user_id: validUserId,
+          full_name: fullName.trim(),
+          phone: `+91 ${phone}`,
+          service_category: service,
+          primary_area: primaryArea,
+          serviceable_areas: serviceableAreas,
+          price_per_visit: rate || 250,
+          experience_years: experienceYears || 3,
+          is_online: true,
+          is_verified: false,
+          verification_status: 'unsubmitted' as const,
+          aadhaar_last4: cleanAadhaar.slice(-4) || null,
+          rating: 5.0,
+          jobs_count: 0,
+          avatar_color: 'bg-brand-600',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        // Insert directly into public.helpers in Supabase
+        if (isSupabaseConfigured && supabase) {
+          try {
+            const { error: helperErr } = await supabase.from('helpers').insert([helperPayload]);
+            if (helperErr) {
+              console.error('Direct insert to public.helpers error:', helperErr.message);
+              if (helperErr.code === '23505') {
+                await supabase.from('helpers').upsert(helperPayload);
+              }
+            }
+          } catch (insertErr) {
+            console.warn('Could not insert helper to Supabase helpers table:', insertErr);
+          }
+        }
 
         const newWorker: Worker = {
-          id: `w_live_${Date.now()}`,
+          id: helperId,
+          user_id: validUserId || undefined,
           name: fullName.trim(),
           phone: `+91 ${phone}`,
           service: service,
@@ -193,31 +237,6 @@ export default function AuthModal({
           },
         };
         addWorker(newWorker);
-
-        // Sync to Supabase workers table with unverified status
-        if (isSupabaseConfigured && supabase) {
-          try {
-            await supabase.from('workers').insert({
-              name: newWorker.name,
-              phone: newWorker.phone,
-              service: service,
-              service_category: service,
-              city: city,
-              area: primaryArea,
-              primary_area: primaryArea,
-              serviceable_areas: serviceableAreas,
-              price_per_visit: rate || 250,
-              is_online: true,
-              is_verified: false,
-              verified: false,
-              rating: 5.0,
-              jobs_count: 0,
-              aadhaar_last_four: cleanAadhaar.slice(-4),
-            });
-          } catch (insertErr) {
-            console.warn('Could not sync helper to Supabase workers table:', insertErr);
-          }
-        }
       }
 
       onLoginSuccess(res.profile);

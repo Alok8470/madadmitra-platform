@@ -2,6 +2,24 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { Worker, VerificationStatus, ServiceId } from '../types';
 
 /**
+ * Ensures an ID is a valid 36-character UUID accepted by PostgreSQL.
+ * If the input is not a valid UUID, generates a fresh RFC 4122 v4 UUID.
+ */
+export function ensureValidUuid(id?: string | null): string {
+  if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return id;
+  }
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/**
  * Maps a Supabase public.helpers row to the frontend Worker interface.
  * Strict Verification Guarantee:
  * - verified is ONLY true when verification_status === 'verified' AND is_verified === true.
@@ -63,8 +81,12 @@ export async function fetchHelpersFromSupabase(): Promise<Worker[]> {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!helpersErr && Array.isArray(helpersData) && helpersData.length > 0) {
+    if (!helpersErr && Array.isArray(helpersData)) {
       return helpersData.map(mapHelperRowToWorker);
+    }
+
+    if (helpersErr) {
+      console.warn('Error fetching from public.helpers table:', helpersErr.message);
     }
 
     // 2. Fallback: Fetch from public.workers table
@@ -84,13 +106,13 @@ export async function fetchHelpersFromSupabase(): Promise<Worker[]> {
 }
 
 /**
- * Creates a new helper in the public.helpers table with default:
+ * Creates a new helper directly in the public.helpers table with default:
  * is_verified = false, verification_status = 'unsubmitted'
  */
 export async function createHelperInSupabase(
   helper: Partial<Worker>
 ): Promise<{ success: boolean; worker?: Worker; error?: string }> {
-  const id = helper.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `h_${Date.now()}`);
+  const id = ensureValidUuid(helper.id);
   const srv = helper.service_category || helper.service || 'cook';
   const primaryArea = helper.primary_area || helper.area || 'Deoria';
   const serviceable = helper.serviceable_areas || [primaryArea];
@@ -101,9 +123,15 @@ export async function createHelperInSupabase(
   const verStatus: VerificationStatus = isApproved ? 'verified' : (helper.verification_status || 'unsubmitted');
   const isVer = isApproved;
 
+  const validUserId =
+    helper.user_id &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(helper.user_id)
+      ? helper.user_id
+      : null;
+
   const rowPayload = {
     id,
-    user_id: helper.user_id || null,
+    user_id: validUserId,
     full_name: helper.name || 'New Partner',
     phone: helper.phone || '',
     service_category: srv,
@@ -131,10 +159,14 @@ export async function createHelperInSupabase(
 
   if (isSupabaseConfigured && supabase) {
     try {
-      // 1. Insert into public.helpers
-      const { error: helpersErr } = await supabase.from('helpers').upsert(rowPayload);
+      // 1. Direct insert into public.helpers
+      const { error: helpersErr } = await supabase.from('helpers').insert([rowPayload]);
       if (helpersErr) {
-        console.warn('public.helpers upsert note:', helpersErr.message);
+        console.error('public.helpers insert error:', helpersErr.message);
+        // If row already exists (duplicate key), try upsert
+        if (helpersErr.code === '23505') {
+          await supabase.from('helpers').upsert(rowPayload);
+        }
       }
 
       // 2. Also sync to public.workers for backward-compatibility
@@ -159,7 +191,7 @@ export async function createHelperInSupabase(
       };
       await supabase.from('workers').upsert(workerPayload);
     } catch (err: any) {
-      console.warn('Sync to Supabase helper/worker fallback:', err);
+      console.warn('Sync to Supabase helper/worker error:', err);
     }
   }
 
@@ -222,8 +254,14 @@ export async function updateHelperInSupabase(
   }
 
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
     // Update public.helpers table
-    await supabase.from('helpers').update(patch).eq('id', id);
+    if (isUuid) {
+      await supabase.from('helpers').update(patch).eq('id', id);
+    } else {
+      await supabase.from('helpers').update(patch).eq('phone', id);
+    }
 
     // Sync to public.workers table
     const workerPatch: Record<string, any> = {};
@@ -246,7 +284,11 @@ export async function updateHelperInSupabase(
       workerPatch.verified = patch.is_verified;
     }
     if (Object.keys(workerPatch).length > 0) {
-      await supabase.from('workers').update(workerPatch).eq('id', id);
+      if (isUuid) {
+        await supabase.from('workers').update(workerPatch).eq('id', id);
+      } else {
+        await supabase.from('workers').update(workerPatch).eq('phone', id);
+      }
     }
 
     return { success: true };
@@ -257,7 +299,7 @@ export async function updateHelperInSupabase(
 }
 
 /**
- * Deletes a helper from public.helpers and clean up verifications and workers.
+ * Deletes a helper from public.helpers and cleans up verifications and workers.
  */
 export async function deleteHelperFromSupabase(
   id: string
@@ -267,14 +309,26 @@ export async function deleteHelperFromSupabase(
   }
 
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
     // 1. Delete from public.helpers
-    await supabase.from('helpers').delete().eq('id', id);
+    if (isUuid) {
+      await supabase.from('helpers').delete().eq('id', id);
+    } else {
+      await supabase.from('helpers').delete().eq('phone', id);
+    }
 
     // 2. Delete from public.workers
-    await supabase.from('workers').delete().eq('id', id);
+    if (isUuid) {
+      await supabase.from('workers').delete().eq('id', id);
+    } else {
+      await supabase.from('workers').delete().eq('phone', id);
+    }
 
     // 3. Delete from public.helper_verifications
-    await supabase.from('helper_verifications').delete().eq('helper_id', id);
+    if (isUuid) {
+      await supabase.from('helper_verifications').delete().eq('helper_id', id);
+    }
 
     return { success: true };
   } catch (err: any) {
@@ -297,26 +351,32 @@ export async function setHelperVerificationInSupabase(
   const verifiedAt = isVerified ? new Date().toISOString() : null;
 
   try {
-    // Update public.helpers by ID or phone
-    await supabase
-      .from('helpers')
-      .update({
-        verification_status: status,
-        is_verified: isVerified,
-        verified_at: verifiedAt,
-        rejection_reason: rejectionReason || null,
-        updated_at: new Date().toISOString(),
-      })
-      .or(`id.eq.${idOrPhone},phone.eq.${idOrPhone}`);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrPhone);
+    const updatePayload = {
+      verification_status: status,
+      is_verified: isVerified,
+      verified_at: verifiedAt,
+      rejection_reason: rejectionReason || null,
+      updated_at: new Date().toISOString(),
+    };
 
-    // Update public.workers by ID or phone
-    await supabase
-      .from('workers')
-      .update({
-        is_verified: isVerified,
-        verified: isVerified,
-      })
-      .or(`id.eq.${idOrPhone},phone.eq.${idOrPhone}`);
+    // Update public.helpers
+    if (isUuid) {
+      await supabase.from('helpers').update(updatePayload).eq('id', idOrPhone);
+    } else {
+      await supabase.from('helpers').update(updatePayload).eq('phone', idOrPhone);
+    }
+
+    // Update public.workers
+    const workerPayload = {
+      is_verified: isVerified,
+      verified: isVerified,
+    };
+    if (isUuid) {
+      await supabase.from('workers').update(workerPayload).eq('id', idOrPhone);
+    } else {
+      await supabase.from('workers').update(workerPayload).eq('phone', idOrPhone);
+    }
   } catch (err) {
     console.warn('setHelperVerificationInSupabase error:', err);
   }

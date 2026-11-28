@@ -365,7 +365,7 @@ export default function AadhaarVerificationCard({
         .upload(`${userId}/selfie`, selfieFile!, { upsert: true });
       if (selfieErr) throw new Error(t('uploadError', lang));
 
-      // Upsert DB record
+      // Upsert DB record in helper_verifications
       const { error: dbErr } = await supabase.from('helper_verifications').upsert({
         helper_id: userId,
         aadhaar_last4: last4,
@@ -378,6 +378,27 @@ export default function AadhaarVerificationCard({
         helper_phone: helperPhone,
       });
       if (dbErr) throw new Error(t('dbError', lang));
+
+      // Also directly update public.helpers table
+      try {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+        const updateDocPayload = {
+          aadhaar_last4: last4,
+          aadhaar_front_path: frontData!.path,
+          aadhaar_back_path: backData!.path,
+          selfie_path: selfieData!.path,
+          verification_status: 'pending',
+          updated_at: new Date().toISOString(),
+        };
+
+        if (isUuid) {
+          await supabase.from('helpers').update(updateDocPayload).or(`id.eq.${userId},user_id.eq.${userId}`);
+        } else if (helperPhone) {
+          await supabase.from('helpers').update(updateDocPayload).eq('phone', helperPhone);
+        }
+      } catch (helpersUpdateErr) {
+        console.warn('Sync KYC documents to public.helpers note:', helpersUpdateErr);
+      }
 
       setStatus('pending');
       setSuccessMsg(t('successMsg', lang));

@@ -32,6 +32,7 @@ import { useApp } from '../context/AppContext';
 import { SERVICE_LABELS, SERVICES } from '../data/mockData';
 import { DEORIA_AREA_COORDINATES } from '../services/dispatchService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { ensureValidUuid } from '../services/helperService';
 import type { Booking, Worker, BookingStatus } from '../types';
 import AdminVerificationPanel from './AdminVerificationPanel';
 import Modal from './Modal';
@@ -111,7 +112,19 @@ export default function AdminDashboard() {
     updateWorker,
     removeWorker,
     addWorker,
+    refreshHelpers,
   } = useApp();
+
+  const [refreshingHelpers, setRefreshingHelpers] = useState<boolean>(false);
+
+  const handleRefreshHelpers = async () => {
+    setRefreshingHelpers(true);
+    try {
+      await refreshHelpers();
+    } finally {
+      setRefreshingHelpers(false);
+    }
+  };
 
   // Authentication & Route Security State
   const [authChecking, setAuthChecking] = useState<boolean>(true);
@@ -452,8 +465,43 @@ export default function AdminDashboard() {
       return;
     }
 
+    const helperId = ensureValidUuid();
+    const helperPayload = {
+      id: helperId,
+      full_name: newHelper.name.trim(),
+      phone: newHelper.phone.trim(),
+      service_category: newHelper.service,
+      primary_area: newHelper.primary_area,
+      serviceable_areas: newHelper.serviceable_areas,
+      price_per_visit: Number(newHelper.pricePerVisit) || 200,
+      experience_years: Number(newHelper.experienceYears) || 3,
+      is_online: newHelper.online,
+      is_verified: false,
+      verification_status: 'unsubmitted' as const,
+      rating: 5.0,
+      jobs_count: 0,
+      avatar_color: 'bg-brand-600',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Save directly to Supabase public.helpers table
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error: insErr } = await supabase.from('helpers').insert([helperPayload]);
+        if (insErr) {
+          console.error('Supabase helpers insert error:', insErr.message);
+          if (insErr.code === '23505') {
+            await supabase.from('helpers').upsert(helperPayload);
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase helper insert error:', err);
+      }
+    }
+
     const createdHelper: Worker = {
-      id: `w_live_${Date.now()}`,
+      id: helperId,
       name: newHelper.name.trim(),
       phone: newHelper.phone.trim(),
       service: newHelper.service as any,
@@ -468,37 +516,13 @@ export default function AdminDashboard() {
       jobs: 0,
       online: newHelper.online,
       is_online: newHelper.online,
-      verified: newHelper.verified,
-      is_verified: newHelper.verified,
-      verification_status: newHelper.verified ? 'verified' : 'unsubmitted',
+      verified: false,
+      is_verified: false,
+      verification_status: 'unsubmitted',
       avatarColor: 'bg-brand-600',
       isRealPartner: true,
-      badgeTag: newHelper.verified ? 'सत्यापित मिस्त्री' : 'KYC Pending',
+      badgeTag: 'KYC Pending',
     };
-
-    // Save to Supabase if configured
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('workers').insert({
-          id: createdHelper.id,
-          name: createdHelper.name,
-          phone: createdHelper.phone,
-          service: createdHelper.service,
-          service_category: createdHelper.service,
-          primary_area: createdHelper.primary_area,
-          serviceable_areas: createdHelper.serviceable_areas,
-          city: 'Deoria',
-          price_per_visit: createdHelper.pricePerVisit,
-          is_online: createdHelper.online,
-          is_verified: createdHelper.verified,
-          rating: 5.0,
-          jobs_count: 0,
-          created_at: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.warn('Supabase worker insert fallback:', err);
-      }
-    }
 
     addWorker(createdHelper);
     setShowAddWorkerModal(false);
@@ -516,22 +540,26 @@ export default function AdminDashboard() {
     alert(`Helper ${createdHelper.name} added successfully!`);
   };
 
-  // Save Edited Helper Areas
+  // Save Edited Helper Areas directly to public.helpers
   const handleSaveWorkerAreas = async () => {
     if (!editingWorker) return;
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase
-          .from('workers')
-          .update({
-            primary_area: editingWorker.primary_area,
-            serviceable_areas: editingWorker.serviceable_areas,
-            area: editingWorker.primary_area,
-          })
-          .eq('id', editingWorker.id);
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(editingWorker.id);
+        const updatePayload = {
+          primary_area: editingWorker.primary_area,
+          serviceable_areas: editingWorker.serviceable_areas,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (isUuid) {
+          await supabase.from('helpers').update(updatePayload).eq('id', editingWorker.id);
+        } else {
+          await supabase.from('helpers').update(updatePayload).eq('phone', editingWorker.phone);
+        }
       } catch (err) {
-        console.warn('Supabase worker update error:', err);
+        console.warn('Supabase helpers update error:', err);
       }
     }
 
@@ -1299,13 +1327,25 @@ export default function AdminDashboard() {
               </select>
             </div>
 
-            <button
-              onClick={() => setShowAddWorkerModal(true)}
-              className="btn-primary py-2 px-4 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-soft self-start sm:self-auto"
-            >
-              <PlusCircle className="h-4 w-4" />
-              <span>+ Add Helper Manually</span>
-            </button>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={handleRefreshHelpers}
+                disabled={refreshingHelpers}
+                className="btn py-2 px-3 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                title="Refresh helpers directly from Supabase"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshingHelpers ? 'animate-spin text-brand-600' : 'text-slate-500'}`} />
+                <span>{refreshingHelpers ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
+
+              <button
+                onClick={() => setShowAddWorkerModal(true)}
+                className="btn-primary py-2 px-4 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-soft"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span>+ Add Helper Manually</span>
+              </button>
+            </div>
           </div>
 
           {/* Helpers Roster Table */}

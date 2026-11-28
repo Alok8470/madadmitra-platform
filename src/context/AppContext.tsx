@@ -72,6 +72,7 @@ interface AppState {
   addWorker: (w: Worker) => void;
   updateWorker: (w: Worker) => void;
   removeWorker: (id: string) => void;
+  refreshHelpers: () => Promise<void>;
   // Platform Deployment / Showcase Mode
   catalogMode: CatalogMode;
   setCatalogMode: (mode: CatalogMode) => void;
@@ -158,6 +159,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Sync helpers with Supabase public.helpers table on mount and via Realtime
+  const refreshHelpers = async () => {
+    try {
+      const supaHelpers = await fetchHelpersFromSupabase();
+      if (supaHelpers.length > 0) {
+        setWorkers(supaHelpers);
+        try {
+          localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(supaHelpers));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not refresh helpers from Supabase:', err);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -165,24 +182,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const supaHelpers = await fetchHelpersFromSupabase();
         if (isMounted && supaHelpers.length > 0) {
-          setWorkers((prev) => {
-            const supaMap = new Map<string, Worker>();
-            supaHelpers.forEach((h) => supaMap.set(h.id, h));
-
-            const merged = supaHelpers.slice();
-            prev.forEach((localW) => {
-              if (!supaMap.has(localW.id)) {
-                merged.push(localW);
-              }
-            });
-
-            try {
-              localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(merged));
-            } catch (e) {
-              console.error(e);
-            }
-            return merged;
-          });
+          setWorkers(supaHelpers);
+          try {
+            localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(supaHelpers));
+          } catch (e) {
+            console.error(e);
+          }
         }
       } catch (err) {
         console.warn('Could not load helpers from Supabase on mount:', err);
@@ -436,6 +441,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addWorker,
       updateWorker,
       removeWorker,
+      refreshHelpers,
       catalogMode,
       setCatalogMode,
       authModalOpen,
