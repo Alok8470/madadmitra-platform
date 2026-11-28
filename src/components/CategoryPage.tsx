@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ArrowLeft,
   Star,
@@ -14,12 +14,16 @@ import {
   Store,
   Zap,
   Sparkles,
+  Bell,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { SERVICES, SERVICE_SKUS, HARDWARE_PARTS, type Worker, type ServiceSku } from '../data/mockData';
+import { checkAreaAvailability } from '../services/availabilityService';
 import DispatchRadarModal from './DispatchRadarModal';
 import MadadSurakshaModal from './MadadSurakshaModal';
+import NotifyDemandModal from './NotifyDemandModal';
+import type { AreaAvailabilityResult } from '../types';
 
 type PlanFrequency = 'one_time' | 'weekly' | 'monthly';
 
@@ -38,6 +42,31 @@ export default function CategoryPage() {
   const [expandedSku, setExpandedSku] = useState<string | null>(null);
   const [showRadarModal, setShowRadarModal] = useState(false);
   const [showSurakshaModal, setShowSurakshaModal] = useState(false);
+
+  // Area availability state
+  const [areaAvailability, setAreaAvailability] = useState<AreaAvailabilityResult>({
+    isAvailable: true,
+    helperCount: 0,
+    availableCategories: [],
+    isComingSoonArea: false,
+    checkedArea: 'Deoria',
+    checkedCity: 'Deoria',
+  });
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    checkAreaAvailability(city, selectedCategory || undefined, workers).then((res) => {
+      if (active) {
+        setAreaAvailability(res);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [city, selectedCategory, workers]);
+
+  const cleanArea = city.replace(/\(coming soon\)/i, '').trim();
 
   const categoryData = SERVICES.find((s) => s.id === selectedCategory);
 
@@ -240,6 +269,40 @@ export default function CategoryPage() {
           </p>
         </div>
       </div>
+
+      {/* COMING SOON AREA GATE BANNER */}
+      {!areaAvailability.isAvailable && (
+        <div className="mb-6 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
+          <div className="flex items-start gap-3">
+            <div className="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-amber-500 text-white text-xl shadow-xs">
+              🚀
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-950 mb-1">
+                <Sparkles className="h-3 w-3 text-amber-700" />
+                <span>Coming Soon in {cleanArea}</span>
+              </div>
+              <h3 className="font-display font-black text-slate-950 text-sm sm:text-base">
+                {isHi
+                  ? `${cleanArea} में ${categoryData.title} सेवा जल्द शुरू हो रही है!`
+                  : `Verified ${categoryData.title}s are Launching Soon in ${cleanArea}!`}
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-700 leading-relaxed max-w-xl">
+                {isHi
+                  ? `वर्तमान में ${cleanArea} में कोई सत्यापित कारीगर ऑनलाइन नहीं है। बुकिंग अस्थायी रूप से अक्षम है। सेवा शुरू होते ही अलर्ट पाने के लिए नीचे क्लिक करें।`
+                  : `No verified helpers are currently online in ${cleanArea} for this service. Booking is temporarily disabled. Request an alert to be notified when live!`}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowNotifyModal(true)}
+            className="btn bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 px-4 text-xs rounded-xl shadow-soft shrink-0 self-start sm:self-auto flex items-center gap-1.5 active:scale-95 transition-transform"
+          >
+            <Bell className="h-4 w-4" />
+            <span>{isHi ? 'लॉन्च पर मुझे सूचित करें' : 'Notify Me When Live'}</span>
+          </button>
+        </div>
+      )}
 
       {/* SUB-TABS: Rate Card vs Verified Pros vs Spare Parts */}
       <div className="flex border-b border-slate-200 mb-6 gap-2 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x w-full max-w-full">
@@ -458,7 +521,15 @@ export default function CategoryPage() {
                     <span className="text-[11px] text-slate-400 font-medium">
                       {isRepairCategory ? 'Standard Fix' : 'Standard Service'}
                     </span>
-                    {qty === 0 ? (
+                    {!areaAvailability.isAvailable ? (
+                      <button
+                        onClick={() => setShowNotifyModal(true)}
+                        className="btn bg-amber-500 hover:bg-amber-400 text-slate-950 py-2.5 px-4 text-xs font-bold rounded-xl shadow-soft min-h-[40px] flex items-center gap-1.5 active:scale-95"
+                      >
+                        <Bell className="h-3.5 w-3.5" />
+                        <span>Notify When Live</span>
+                      </button>
+                    ) : qty === 0 ? (
                       <button
                         onClick={() => handleAddSku(sku.id)}
                         className="btn-primary py-2.5 px-5 text-xs font-bold rounded-xl shadow-soft min-h-[40px] active:scale-95"
@@ -638,7 +709,15 @@ export default function CategoryPage() {
 
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-[11px] text-emerald-700 font-bold">In-Stock at Local Shop</span>
-                    {qty === 0 ? (
+                    {!areaAvailability.isAvailable ? (
+                      <button
+                        onClick={() => setShowNotifyModal(true)}
+                        className="btn bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 px-3.5 text-xs font-bold rounded-xl shadow-soft min-h-[38px] flex items-center gap-1.5 active:scale-95"
+                      >
+                        <Bell className="h-3.5 w-3.5" />
+                        <span>Notify When Live</span>
+                      </button>
+                    ) : qty === 0 ? (
                       <button
                         onClick={() => handleAddPart(part.id)}
                         className="btn bg-amber-400 hover:bg-amber-300 text-slate-950 py-2.5 px-4 text-xs font-black rounded-xl shadow-soft min-h-[40px] active:scale-95"
@@ -673,7 +752,7 @@ export default function CategoryPage() {
       )}
 
       {/* STICKY BOTTOM FLOATING CART TRAY */}
-      {totalCartCount > 0 && (
+      {totalCartCount > 0 && areaAvailability.isAvailable && (
         <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 inset-x-0 z-40 px-3 sm:px-4 pointer-events-none animate-slide-up">
           <div className="max-w-2xl mx-auto pointer-events-auto">
             <div className="rounded-2xl bg-slate-950 text-white p-3 sm:p-4 shadow-elevated border-2 border-emerald-400 flex items-center justify-between gap-3">
@@ -723,6 +802,15 @@ export default function CategoryPage() {
           onClose={() => setShowSurakshaModal(false)}
         />
       )}
+
+      {/* NOTIFY DEMAND MODAL */}
+      <NotifyDemandModal
+        open={showNotifyModal}
+        onClose={() => setShowNotifyModal(false)}
+        area={cleanArea}
+        city={areaAvailability.checkedCity}
+        serviceCategory={selectedCategory}
+      />
     </div>
   );
 }

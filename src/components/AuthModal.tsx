@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Modal from './Modal';
 import { sendOtp, verifyOtp } from '../services/authService';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { SERVICE_LABELS, type ServiceId, type Worker } from '../data/mockData';
@@ -35,12 +36,15 @@ export default function AuthModal({
   cities,
 }: AuthModalProps) {
   const { language } = useLanguage();
-  const { addWorker } = useApp();
+  const { addWorker, city: appLocation } = useApp();
 
   const initialRole: UserRole = defaultRole === 'admin' ? 'customer' : defaultRole;
   const [role, setRole] = useState<UserRole>(initialRole);
   const [workerMode, setWorkerMode] = useState<'login' | 'signup'>(defaultWorkerMode);
   const [step, setStep] = useState<'form' | 'otp'>('form');
+
+  // Customer area state
+  const [customerArea, setCustomerArea] = useState('Raghav Nagar');
 
   useEffect(() => {
     if (isOpen) {
@@ -49,8 +53,9 @@ export default function AuthModal({
       setStep('form');
       setErrorMsg('');
       setInfoMsg('');
+      setCustomerArea(appLocation?.replace(/\(coming soon\)/i, '').trim() || 'Raghav Nagar');
     }
-  }, [isOpen, defaultRole, defaultWorkerMode]);
+  }, [isOpen, defaultRole, defaultWorkerMode, appLocation]);
 
   // Common fields
   const [phone, setPhone] = useState('');
@@ -89,6 +94,11 @@ export default function AuthModal({
 
     if (!fullName.trim()) {
       setErrorMsg(language === 'hi' ? 'कृपया अपना पूरा नाम दर्ज करें' : 'Please enter your full name');
+      return;
+    }
+
+    if (role === 'customer' && !customerArea.trim()) {
+      setErrorMsg(language === 'hi' ? 'कृपया अपना इलाका/कॉलोनी दर्ज करें' : 'Please enter your area or colony');
       return;
     }
 
@@ -139,7 +149,8 @@ export default function AuthModal({
     }
 
     setLoading(true);
-    const res = await verifyOtp(phone, otp, role, fullName, city);
+    const selectedArea = role === 'worker' ? area.trim() : (customerArea.trim() || 'Deoria (All Areas)');
+    const res = await verifyOtp(phone, otp, role, fullName, city, selectedArea);
     setLoading(false);
 
     if (res.success && res.profile) {
@@ -147,19 +158,27 @@ export default function AuthModal({
       if (role === 'worker' && workerMode === 'signup') {
         const cleanAadhaar = aadhaar.replace(/\D/g, '');
         const cleanPan = pan.trim().toUpperCase();
+        const primaryArea = area.trim() || 'Deoria (All Areas)';
+        const serviceableAreas = [primaryArea, 'Deoria (All Areas)'];
+
         const newWorker: Worker = {
           id: `w_live_${Date.now()}`,
           name: fullName.trim(),
           phone: `+91 ${phone}`,
           service: service,
+          service_category: service,
           rating: 5.0,
           jobs: 0,
           city: city,
-          area: area.trim() || 'Central',
+          area: primaryArea,
+          primary_area: primaryArea,
+          serviceable_areas: serviceableAreas,
           online: true,
+          is_online: true,
           pricePerVisit: rate || 250,
           avatarColor: 'bg-brand-600',
           verified: true,
+          is_verified: true,
           isRealPartner: true,
           experienceYears: experienceYears || 3,
           badgeTag: 'Newly Verified Partner',
@@ -173,6 +192,31 @@ export default function AuthModal({
           },
         };
         addWorker(newWorker);
+
+        // Sync to Supabase workers table if configured
+        if (isSupabaseConfigured && supabase) {
+          try {
+            await supabase.from('workers').insert({
+              name: newWorker.name,
+              phone: newWorker.phone,
+              service: service,
+              service_category: service,
+              city: city,
+              area: primaryArea,
+              primary_area: primaryArea,
+              serviceable_areas: serviceableAreas,
+              price_per_visit: rate || 250,
+              is_online: true,
+              is_verified: true,
+              verified: true,
+              rating: 5.0,
+              jobs_count: 0,
+              aadhaar_last_four: cleanAadhaar.slice(-4),
+            });
+          } catch (insertErr) {
+            console.warn('Could not sync helper to Supabase workers table:', insertErr);
+          }
+        }
       }
 
       onLoginSuccess(res.profile);
@@ -449,21 +493,34 @@ export default function AuthModal({
               </div>
             )}
 
-            {/* City selection for normal customers */}
+            {/* City and Area selection for normal customers */}
             {role !== 'worker' && (
-              <div>
-                <label className="text-xs font-bold text-slate-700">Select City</label>
-                <select
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="input mt-1 text-xs bg-white"
-                >
-                  {cities.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Select City</label>
+                  <select
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="input mt-1 text-xs bg-white"
+                  >
+                    {cities.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Area / Colony</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Raghav Nagar / Civil Lines"
+                    value={customerArea}
+                    onChange={(e) => setCustomerArea(e.target.value)}
+                    className="input mt-1 text-xs"
+                  />
+                </div>
               </div>
             )}
 

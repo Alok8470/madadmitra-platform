@@ -97,10 +97,13 @@ export async function verifyOtp(
   otp: string,
   role: UserRole,
   fullName: string,
-  city: string
+  city: string,
+  area?: string
 ): Promise<{ success: boolean; profile?: UserProfile; message: string }> {
   const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`;
   const cleanOtp = otp.trim();
+  const cleanCity = city || 'Deoria';
+  const cleanArea = area || 'Deoria (All Areas)';
 
   // Test / Demo OTP passes instantly
   if (cleanOtp === '123456' || cleanOtp === '000000') {
@@ -109,7 +112,8 @@ export async function verifyOtp(
       phone: formattedPhone,
       fullName: fullName.trim() || (role === 'worker' ? 'Service Partner' : 'Customer'),
       role: role,
-      city: city || 'Deoria',
+      city: cleanCity,
+      area: cleanArea,
       createdAt: new Date().toISOString(),
     };
 
@@ -132,9 +136,25 @@ export async function verifyOtp(
           phone: formattedPhone,
           fullName: fullName || 'MadadMitra User',
           role: role,
-          city: city || 'Deoria',
+          city: cleanCity,
+          area: cleanArea,
           createdAt: new Date().toISOString(),
         };
+
+        // Sync to Supabase public.profiles table
+        try {
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            phone: formattedPhone,
+            full_name: profile.fullName,
+            role: role,
+            city: cleanCity,
+            area: cleanArea,
+            updated_at: new Date().toISOString(),
+          });
+        } catch (dbErr) {
+          console.warn('Could not sync user profile to DB:', dbErr);
+        }
 
         saveSession(profile);
         return { success: true, profile, message: 'Login successful' };
@@ -151,7 +171,8 @@ export async function verifyOtp(
       phone: formattedPhone,
       fullName: fullName.trim() || (role === 'worker' ? 'Service Partner' : 'Customer'),
       role: role,
-      city: city || 'Deoria',
+      city: cleanCity,
+      area: cleanArea,
       createdAt: new Date().toISOString(),
     };
 
@@ -160,4 +181,38 @@ export async function verifyOtp(
   }
 
   return { success: false, message: 'Invalid OTP code. Please enter 123456.' };
+}
+
+/**
+ * Updates a customer or helper's selected area and city in their local session and Supabase profiles table.
+ */
+export async function updateUserProfileLocation(
+  user: UserProfile,
+  city: string,
+  area: string
+): Promise<UserProfile> {
+  const updated: UserProfile = {
+    ...user,
+    city: city || user.city || 'Deoria',
+    area: area || user.area || 'Deoria (All Areas)',
+  };
+
+  saveSession(updated);
+
+  if (isSupabaseConfigured && supabase && user.id && !user.id.startsWith('usr_')) {
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          city: updated.city,
+          area: updated.area,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+    } catch (err) {
+      console.warn('Could not update profile location in Supabase:', err);
+    }
+  }
+
+  return updated;
 }

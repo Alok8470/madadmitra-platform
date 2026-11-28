@@ -20,13 +20,17 @@ import {
   AlertCircle,
   ArrowRight,
   Tag,
+  Bell,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { SERVICES, SERVICE_LABELS, TESTIMONIALS, type ServiceId } from '../data/mockData';
+import { checkAreaAvailability } from '../services/availabilityService';
 import SavingsCalculator from './SavingsCalculator';
 import SOSBookingModal from './SOSBookingModal';
 import UrbanCompanyComparison from './UrbanCompanyComparison';
+import NotifyDemandModal from './NotifyDemandModal';
+import type { AreaAvailabilityResult } from '../types';
 
 // ─── Offer Banner Data ────────────────────────────────────────────────────────
 const OFFER_BANNERS = [
@@ -114,6 +118,30 @@ export default function Homepage() {
   const [bannerIdx, setBannerIdx] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Area-based availability check state
+  const [areaAvailability, setAreaAvailability] = useState<AreaAvailabilityResult>({
+    isAvailable: true,
+    helperCount: 0,
+    availableCategories: [],
+    isComingSoonArea: false,
+    checkedArea: 'Deoria',
+    checkedCity: 'Deoria',
+  });
+  const [notifyModalOpen, setNotifyModalOpen] = useState(false);
+  const [notifyTargetService, setNotifyTargetService] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    checkAreaAvailability(city, undefined, workers).then((res) => {
+      if (active) {
+        setAreaAvailability(res);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [city, workers]);
 
   // ── Filtered workers ──────────────────────────────────────────────────────
   const filteredWorkers = useMemo(() => {
@@ -219,10 +247,15 @@ export default function Homepage() {
     }
   };
 
+  const cleanLocation = city.replace(/\(coming soon\)/i, '').trim();
   const liveCount = filteredWorkers.length;
-  const availText = liveCount > 0
-    ? `${liveCount} Verified Helper${liveCount === 1 ? '' : 's'} Available Now in ${city.replace(' (Coming Soon)', '')}`
-    : `KYC Partner Onboarding Active — ${city.replace(' (Coming Soon)', '')}`;
+  const availText = !areaAvailability.isAvailable
+    ? (isHi
+        ? `📍 ${cleanLocation} में जल्द आ रहे हैं • कारीगर ऑनबोर्डिंग जारी`
+        : `📍 Coming Soon in ${cleanLocation} • Local Helpers Onboarding`)
+    : liveCount > 0
+    ? `${liveCount} Verified Helper${liveCount === 1 ? '' : 's'} Available Now in ${cleanLocation}`
+    : `KYC Partner Onboarding Active — ${cleanLocation}`;
 
   // ── SUGGESTED SEARCH CHIPS ─────────────────────────────────────────────────
   const CHIPS = isHi
@@ -284,12 +317,26 @@ export default function Homepage() {
                 <div className="flex items-center gap-2 px-1 mb-2">
                   <MapPin className="h-3.5 w-3.5 text-brand-500 shrink-0" />
                   <span className="text-[11px] font-semibold text-slate-500 truncate min-w-0">
-                    {city.replace(' (Coming Soon)', '')}
+                    {cleanLocation}
                   </span>
-                  <span className="ml-auto text-[10px] font-bold text-emerald-600 flex items-center gap-1 shrink-0">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                    {isHi ? 'लाइव सेवा' : 'Live Service'}
-                  </span>
+                  {areaAvailability.isAvailable ? (
+                    <span className="ml-auto text-[10px] font-bold text-emerald-600 flex items-center gap-1 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                      {isHi ? 'लाइव सेवा' : 'Live Service'}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotifyTargetService(null);
+                        setNotifyModalOpen(true);
+                      }}
+                      className="ml-auto text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                    >
+                      <Sparkles className="h-3 w-3 text-amber-600" />
+                      <span>{isHi ? 'जल्द आ रहा है • सूचित करें' : 'Coming Soon • Notify Me'}</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Search Input Row */}
@@ -564,18 +611,30 @@ export default function Homepage() {
           {CATEGORY_GRID.map((cat) => {
             const Icon = cat.icon;
             const isActive = filter === cat.id || selectedCategory === cat.id;
+            const isCategoryLive =
+              areaAvailability.isAvailable &&
+              (areaAvailability.availableCategories.length === 0 ||
+                areaAvailability.availableCategories.includes(cat.id));
+
             return (
               <button
                 key={cat.id}
                 onClick={() => {
-                  setFilter(cat.id as ServiceId);
-                  if (setSelectedCategory) setSelectedCategory(cat.id as ServiceId);
-                  setView('category');
+                  if (isCategoryLive) {
+                    setFilter(cat.id as ServiceId);
+                    if (setSelectedCategory) setSelectedCategory(cat.id as ServiceId);
+                    setView('category');
+                  } else {
+                    setNotifyTargetService(cat.id);
+                    setNotifyModalOpen(true);
+                  }
                 }}
                 className={`group flex flex-col items-center gap-2 p-3 sm:p-4 rounded-2xl border transition-all duration-200 active:scale-95 text-center w-full ${
                   isActive
                     ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200 shadow-md'
-                    : 'border-slate-200/80 bg-white hover:border-brand-200 hover:shadow-md hover:-translate-y-0.5'
+                    : isCategoryLive
+                    ? 'border-slate-200/80 bg-white hover:border-brand-200 hover:shadow-md hover:-translate-y-0.5'
+                    : 'border-amber-200 bg-amber-50/40 hover:border-amber-300 hover:shadow-sm'
                 }`}
               >
                 {/* Icon */}
@@ -591,9 +650,15 @@ export default function Homepage() {
                   <p className={`text-[10px] sm:text-xs font-extrabold leading-snug break-words ${isActive ? 'text-brand-700' : 'text-slate-800 group-hover:text-brand-700'} transition-colors`}>
                     {cat.label}
                   </p>
-                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-0.5">
-                    from {cat.price}
-                  </p>
+                  {isCategoryLive ? (
+                    <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-0.5">
+                      from {cat.price}
+                    </p>
+                  ) : (
+                    <span className="text-[8px] sm:text-[9px] font-black text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded-full inline-block mt-0.5">
+                      Coming Soon
+                    </span>
+                  )}
                 </div>
               </button>
             );
@@ -601,29 +666,51 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* ════════════════ COMING SOON BANNER ════════════════ */}
-      {city.includes('Coming Soon') && (
+      {/* ════════════════ COMING SOON BANNER & DEMAND GATE ════════════════ */}
+      {!areaAvailability.isAvailable && (
         <section className="mx-auto max-w-6xl px-4 mt-7 w-full min-w-0">
-          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white text-xl shadow-sm">
+          <div className="rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 p-5 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="grid h-12 w-12 sm:h-14 sm:w-14 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white text-2xl shadow-soft">
                 🚀
               </div>
               <div>
-                <h3 className="font-display font-bold text-amber-950 text-sm sm:text-base">
-                  MadadMitra Launching in {city.replace(' (Coming Soon)', '')}
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-950 mb-1">
+                  <Sparkles className="h-3 w-3 text-amber-700" />
+                  <span>Coming Soon in {cleanLocation}</span>
+                </div>
+                <h3 className="font-display font-black text-slate-950 text-base sm:text-xl">
+                  {isHi
+                    ? `${cleanLocation} में मददमित्र सेवा जल्द शुरू हो रही है!`
+                    : `MadadMitra is Launching Soon in ${cleanLocation}!`}
                 </h3>
-                <p className="mt-1 text-xs sm:text-sm text-amber-800 leading-relaxed max-w-xl">
-                  Partner pre-registrations now open. Full service live across <strong>Deoria</strong>.
+                <p className="mt-1 text-xs sm:text-sm text-slate-700 leading-relaxed max-w-2xl">
+                  {isHi
+                    ? `वर्तमान में ${cleanLocation} में कोई सत्यापित कारीगर ऑनलाइन नहीं है। हम आपके इलाके में उच्च गुणवत्ता वाले कारीगरों को ऑनबोर्ड कर रहे हैं। नीचे 'Notify Me' दबाएं ताकि सेवा शुरू होते ही आपको प्राथमिकता सूचना मिल सके।`
+                    : `No verified helpers are currently online in ${cleanLocation}. We are actively onboarding background-checked local partners. Request your area below to speed up the launch!`}
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => openAuthModal('worker', 'signup')}
-              className="btn-primary py-2.5 px-4 text-xs font-bold whitespace-nowrap self-start sm:self-auto shrink-0 shadow-soft rounded-xl"
-            >
-              Pre-Register as Partner
-            </button>
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setNotifyTargetService(null);
+                  setNotifyModalOpen(true);
+                }}
+                className="btn-primary py-3 px-5 text-xs sm:text-sm font-black rounded-xl shadow-soft flex items-center gap-2 shrink-0 active:scale-95"
+              >
+                <Bell className="h-4 w-4" />
+                <span>{isHi ? 'लॉन्च पर मुझे सूचित करें' : 'Notify Me When Live'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuthModal('worker', 'signup')}
+                className="btn bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 py-3 px-4 text-xs font-bold rounded-xl shadow-xs shrink-0"
+              >
+                {isHi ? 'पार्टनर बनें' : 'Pre-Register as Partner'}
+              </button>
+            </div>
           </div>
         </section>
       )}
@@ -688,17 +775,29 @@ export default function Homepage() {
           {SERVICES.map((s) => {
             const Icon = s.icon;
             const isActive = selectedCategory === s.id;
+            const isServiceLive =
+              areaAvailability.isAvailable &&
+              (areaAvailability.availableCategories.length === 0 ||
+                areaAvailability.availableCategories.includes(s.id));
+
             return (
               <button
                 key={s.id}
                 onClick={() => {
-                  if (setSelectedCategory) setSelectedCategory(s.id);
-                  setView('category');
+                  if (isServiceLive) {
+                    if (setSelectedCategory) setSelectedCategory(s.id);
+                    setView('category');
+                  } else {
+                    setNotifyTargetService(s.id);
+                    setNotifyModalOpen(true);
+                  }
                 }}
                 className={`group card-hover p-4 sm:p-5 text-left flex flex-col justify-between transition-all duration-200 active:scale-[0.97] w-full rounded-2xl border ${
                   isActive
                     ? 'border-brand-500 ring-2 ring-brand-200 bg-brand-50/30 shadow-soft'
-                    : 'border-slate-200/80 bg-white hover:border-brand-300'
+                    : isServiceLive
+                    ? 'border-slate-200/80 bg-white hover:border-brand-300'
+                    : 'border-amber-200 bg-amber-50/30 hover:border-amber-300'
                 }`}
               >
                 <div>
@@ -706,9 +805,15 @@ export default function Homepage() {
                     <div className={`grid h-11 w-11 sm:h-13 sm:w-13 place-items-center rounded-2xl bg-gradient-to-br ${s.accent} text-white shadow-soft transition-transform group-hover:scale-105 group-hover:-rotate-2 p-2.5 shrink-0`}>
                       <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                     </div>
-                    <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] sm:text-[10px] px-2">
-                      Live
-                    </span>
+                    {isServiceLive ? (
+                      <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] sm:text-[10px] px-2">
+                        Live
+                      </span>
+                    ) : (
+                      <span className="badge bg-amber-100 text-amber-800 border border-amber-300 text-[9px] sm:text-[10px] px-2 font-bold">
+                        Coming Soon
+                      </span>
+                    )}
                   </div>
                   <h3 className="mt-3 font-display text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-brand-700 transition-colors leading-snug">
                     {s.title}
@@ -722,9 +827,15 @@ export default function Homepage() {
                     <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block">From</span>
                     <span className="font-extrabold text-brand-700 text-xs sm:text-sm">₹{s.startingPrice}</span>
                   </div>
-                  <span className="text-[11px] sm:text-xs font-bold text-brand-600 group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5">
-                    Book →
-                  </span>
+                  {isServiceLive ? (
+                    <span className="text-[11px] sm:text-xs font-bold text-brand-600 group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5">
+                      Book →
+                    </span>
+                  ) : (
+                    <span className="text-[11px] sm:text-xs font-bold text-amber-700 group-hover:underline inline-flex items-center gap-1">
+                      Notify Me 🔔
+                    </span>
+                  )}
                 </div>
               </button>
             );
@@ -798,6 +909,15 @@ export default function Homepage() {
           onClose={() => setShowSosModal(false)}
         />
       )}
+
+      {/* ════════════════ NOTIFY DEMAND MODAL (COMING SOON GATE) ════════════════ */}
+      <NotifyDemandModal
+        open={notifyModalOpen}
+        onClose={() => setNotifyModalOpen(false)}
+        area={cleanLocation}
+        city={areaAvailability.checkedCity}
+        serviceCategory={notifyTargetService}
+      />
 
       {/* ── Floating Toast Notification ── */}
       {toastMsg && (

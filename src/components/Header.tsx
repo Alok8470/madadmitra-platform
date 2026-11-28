@@ -19,6 +19,8 @@ import {
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { DEORIA_AREAS, COMING_SOON_CITIES } from '../data/mockData';
+import { updateUserProfileLocation } from '../services/authService';
+import { parseAreaAndCity } from '../services/availabilityService';
 import type { UserRole } from '../types';
 
 export default function Header() {
@@ -28,6 +30,7 @@ export default function Header() {
     view,
     setView,
     currentUser,
+    setCurrentUser,
     logout,
     openAuthModal,
     bookings,
@@ -67,11 +70,27 @@ export default function Header() {
 
   const handleDetectLocation = () => {
     setIsLocating(true);
-    setTimeout(() => {
-      setCity('Raghav Nagar');
+    setTimeout(async () => {
+      const detected = 'Raghav Nagar';
+      setCity(detected);
       setIsLocating(false);
       setCityOpen(false);
+      if (currentUser) {
+        const updated = await updateUserProfileLocation(currentUser, 'Deoria', detected);
+        setCurrentUser(updated);
+      }
     }, 450);
+  };
+
+  const handleSelectLocation = async (areaName: string) => {
+    setCity(areaName);
+    setCityOpen(false);
+    setCitySearch('');
+    if (currentUser) {
+      const parsed = parseAreaAndCity(areaName);
+      const updated = await updateUserProfileLocation(currentUser, parsed.city, parsed.area);
+      setCurrentUser(updated);
+    }
   };
 
   const filteredDeoria = useMemo(() => {
@@ -191,11 +210,7 @@ export default function Header() {
                       {filteredDeoria.map((areaName) => (
                         <button
                           key={areaName}
-                          onClick={() => {
-                            setCity(areaName);
-                            setCityOpen(false);
-                            setCitySearch('');
-                          }}
+                          onClick={() => handleSelectLocation(areaName)}
                           className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 min-h-[44px] text-xs transition-colors active:scale-98 ${
                             areaName === city
                               ? 'bg-brand-50 font-bold text-brand-700'
@@ -225,11 +240,7 @@ export default function Header() {
                             return (
                               <button
                                 key={cName}
-                                onClick={() => {
-                                  setCity(cName);
-                                  setCityOpen(false);
-                                  setCitySearch('');
-                                }}
+                                onClick={() => handleSelectLocation(cName)}
                                 className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs transition-colors ${
                                   cName === city
                                     ? 'bg-amber-50 font-bold text-amber-900'

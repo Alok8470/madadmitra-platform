@@ -46,14 +46,19 @@ export interface Worker {
   name: string;
   phone?: string;
   service: ServiceId;
+  service_category?: ServiceId | string; // Database column alias
   rating: number;
   jobs: number;
   area: string;
+  primary_area?: string;                 // Helper primary / base operating area
+  serviceable_areas?: string[];          // List of localities the helper serves
   city?: string;
   online: boolean;
+  is_online?: boolean;                   // Database column alias
   pricePerVisit: number;
   avatarColor: string;
   verified: boolean;
+  is_verified?: boolean;                 // Database column alias
   isRealPartner?: boolean;
   kyc?: WorkerKYC;
   dailyRate?: number;
@@ -260,4 +265,24 @@ export interface HelperVerification {
   verified_at: string | null;
   helper_name?: string;            // denormalized for admin list view
   helper_phone?: string;
+}
+
+export interface ServiceDemandLog {
+  id?: string;
+  phone?: string | null;
+  city: string;
+  area: string;
+  service_category?: string | null;
+  customer_id?: string | null;
+  notified?: boolean;
+  created_at?: string;
+}
+
+export interface AreaAvailabilityResult {
+  isAvailable: boolean;
+  helperCount: number;
+  availableCategories: string[];
+  isComingSoonArea: boolean;
+  checkedArea: string;
+  checkedCity: string;
 }
