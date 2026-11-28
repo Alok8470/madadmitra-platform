@@ -71,17 +71,22 @@ export interface Worker {
   kendraGuarantorId?: string;
   audioBioUrl?: string;
   mohallaJobsCount?: number; // "पड़ोसी द्वारा प्रमाणित" (e.g. 18 jobs in area)
+  lat?: number;
+  lng?: number;
 }
 
 export type BookingStatus =
+  | 'searching_helper'
+  | 'assigned'
+  | 'manual_needed'
+  | 'completed'
+  | 'cancelled'
   | 'pending'
   | 'broadcasted'
   | 'accepted'
   | 'en_route'
   | 'in_progress'
   | 'upcoming' // preserved for backward-compatibility with UI tabs
-  | 'completed'
-  | 'cancelled'
   | 'disputed';
 
 export type PaymentStatus =
@@ -171,6 +176,14 @@ export interface Booking {
     extraUtensils?: boolean;
     extraNonVeg?: boolean;
   };
+  // Nearest Helper Matching & Auto-Dispatch fields
+  assigned_helper_id?: string | null;
+  attempt_count?: number;
+  rejected_helper_ids?: string[];
+  current_offer_helper_id?: string | null;
+  offer_expires_at?: string | null;
+  customerLat?: number;
+  customerLng?: number;
 }
 
 export interface HardwareMerchant {

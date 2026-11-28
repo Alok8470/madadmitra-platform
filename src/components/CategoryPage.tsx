@@ -790,6 +790,7 @@ export default function CategoryPage() {
           open={showRadarModal}
           onClose={() => setShowRadarModal(false)}
           serviceName={categoryData.title}
+          serviceCategory={selectedCategory || undefined}
           areaName={city}
           totalBill={grandTotal}
         />
