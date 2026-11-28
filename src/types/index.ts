@@ -73,6 +73,20 @@ export interface Worker {
   mohallaJobsCount?: number; // "पड़ोसी द्वारा प्रमाणित" (e.g. 18 jobs in area)
   lat?: number;
   lng?: number;
+  user_id?: string;
+  verification_status?: VerificationStatus;
+  aadhaar_last4?: string;
+  aadhaar_front_path?: string | null;
+  aadhaar_back_path?: string | null;
+  selfie_path?: string | null;
+  rejection_reason?: string | null;
+  verified_at?: string | null;
+  created_at?: string;
+}
+
+export interface ToastNotification {
+  message: string;
+  type?: 'info' | 'error' | 'success';
 }
 
 export type BookingStatus =

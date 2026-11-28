@@ -590,27 +590,20 @@ export default function AdminDashboard() {
     setIsDeleting(true);
 
     try {
-      // 2. Supabase Delete Logic & RLS support
+      // 2. Comprehensive Supabase deletion, KYC storage purge & profile role reset
       if (isSupabaseConfigured && supabase) {
-        // Delete from helpers table
-        try {
-          await supabase.from('helpers').delete().eq('id', deletingWorker.id);
-        } catch (err) {
-          console.warn('Delete from helpers fallback:', err);
-        }
+        const deleteResult = await deleteHelperFromSupabase(deletingWorker.id, {
+          userId: deletingWorker.user_id,
+          phone: deletingWorker.phone,
+          docPaths: [
+            deletingWorker.aadhaar_front_path,
+            deletingWorker.aadhaar_back_path,
+            deletingWorker.selfie_path,
+          ],
+        });
 
-        // Delete from workers table
-        try {
-          await supabase.from('workers').delete().eq('id', deletingWorker.id);
-        } catch (err) {
-          console.warn('Delete from workers fallback:', err);
-        }
-
-        // Clean up verifications or storage metadata if present
-        try {
-          await supabase.from('helper_verifications').delete().eq('helper_id', deletingWorker.id);
-        } catch (err) {
-          console.warn('Delete helper verifications fallback:', err);
+        if (!deleteResult.success) {
+          throw new Error(deleteResult.error || 'Failed to remove helper from database');
         }
       }
 
@@ -618,7 +611,9 @@ export default function AdminDashboard() {
       removeWorker(deletingWorker.id);
 
       // 4. Success Toast Notification
-      setAssignmentSuccessMsg('Helper removed successfully');
+      setAssignmentSuccessMsg(
+        `Helper ${deletingWorker.name} removed successfully. KYC documents purged & account role reset to customer.`
+      );
       setTimeout(() => setAssignmentSuccessMsg(''), 5000);
       setDeletingWorker(null);
     } catch (err: any) {

@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react';
+import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { AppProvider, useApp } from './context/AppContext';
 import { LanguageProvider } from './context/LanguageContext';
 import Header from './components/Header';
@@ -44,6 +45,8 @@ function Shell() {
     authModalWorkerMode,
     cities,
     setCurrentUser,
+    globalToast,
+    setGlobalToast,
   } = useApp();
 
   const handleLoginSuccess = (profile: UserProfile) => {
@@ -57,6 +60,36 @@ function Shell() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0 overflow-x-hidden w-full max-w-full">
+      {/* Floating Global Toast Alert */}
+      {globalToast && (
+        <div
+          role="alert"
+          className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] max-w-md w-[92%] sm:w-auto animate-fade-in transition-all"
+        >
+          <div
+            className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl shadow-2xl border text-sm font-medium ${
+              globalToast.type === 'error'
+                ? 'bg-red-600 text-white border-red-500 shadow-red-950/40'
+                : globalToast.type === 'success'
+                ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-950/40'
+                : 'bg-slate-900 text-white border-slate-800 shadow-slate-950/40'
+            }`}
+          >
+            {globalToast.type === 'error' && <AlertCircle className="h-5 w-5 shrink-0 text-red-100" />}
+            {globalToast.type === 'success' && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-100" />}
+            {(!globalToast.type || globalToast.type === 'info') && <Info className="h-5 w-5 shrink-0 text-amber-300" />}
+            <span className="flex-1 leading-snug">{globalToast.message}</span>
+            <button
+              onClick={() => setGlobalToast(null)}
+              className="ml-2 text-white/70 hover:text-white p-0.5 rounded-md hover:bg-white/10 transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-full overflow-x-hidden">
         <Header />
         <main className="w-full max-w-full overflow-x-hidden">

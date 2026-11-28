@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { CITIES, INITIAL_BOOKINGS } from '../data/mockData';
 import { getStoredSession, clearSession } from '../services/authService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -9,8 +9,9 @@ import {
   deleteHelperFromSupabase,
   setHelperVerificationInSupabase,
   mapHelperRowToWorker,
+  checkHelperExistsInSupabase,
 } from '../services/helperService';
-import type { Booking, Worker, UserProfile, UserRole, CatalogMode, VerificationStatus } from '../types';
+import type { Booking, Worker, UserProfile, UserRole, CatalogMode, VerificationStatus, ToastNotification } from '../types';
 
 export type View = 'home' | 'worker-profile' | 'customer' | 'worker' | 'bookings' | 'admin' | 'partner-join' | 'category' | 'wallet' | 'admin-login';
 
@@ -69,6 +70,10 @@ interface AppState {
   currentUser: UserProfile | null;
   setCurrentUser: (u: UserProfile | null) => void;
   logout: () => void;
+  forceHelperLogout: (reason?: string) => Promise<void>;
+  globalToast: ToastNotification | null;
+  setGlobalToast: (t: ToastNotification | null) => void;
+  showToast: (message: string, type?: 'info' | 'error' | 'success', durationMs?: number) => void;
   addWorker: (w: Worker) => void;
   updateWorker: (w: Worker) => void;
   removeWorker: (id: string) => void;
@@ -113,6 +118,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [workerAbsent, setWorkerAbsent] = useState<boolean>(false);
   const [currentContractWorker, setContractWorker] = useState<string>('');
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(getStoredSession);
+
+  // Global Toast Notification State
+  const [globalToast, setGlobalToast] = useState<ToastNotification | null>(null);
+
+  const showToast = useCallback(
+    (message: string, type: 'info' | 'error' | 'success' = 'info', durationMs = 6000) => {
+      setGlobalToast({ message, type });
+      setTimeout(() => {
+        setGlobalToast((cur) => (cur?.message === message ? null : cur));
+      }, durationMs);
+    },
+    []
+  );
+
+  // Automatic Real-Time Logout & Session Cleanup for Helper
+  const forceHelperLogout = useCallback(
+    async (reason?: string) => {
+      try {
+        if (isSupabaseConfigured && supabase) {
+          await supabase.auth.signOut();
+        }
+      } catch (err) {
+        console.warn('Supabase auth.signOut note:', err);
+      }
+
+      clearSession();
+      try {
+        localStorage.removeItem(STORAGE_LIVE_WORKERS);
+      } catch {}
+
+      setCurrentUser(null);
+      setViewState('home');
+      if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+        window.history.pushState(null, '', '/');
+      }
+
+      showToast(
+        reason || 'Your helper account has been removed by the administrator.',
+        'error',
+        7000
+      );
+    },
+    [showToast]
+  );
 
   // Global Auth Modal state
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -217,16 +266,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return next;
               });
             } else if (payload.eventType === 'DELETE') {
-              const deletedId = (payload.old as any)?.id;
-              if (deletedId) {
-                setWorkers((prev) => {
-                  const next = prev.filter((w) => w.id !== deletedId);
-                  try {
-                    localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(next));
-                  } catch {}
-                  return next;
-                });
-              }
+              const oldRecord = (payload.old as any) || {};
+              const deletedId = oldRecord.id;
+              const deletedUserId = oldRecord.user_id;
+              const deletedPhone = oldRecord.phone;
+
+              setWorkers((prev) => {
+                // 1. Check if logged-in helper account was deleted
+                const storedUser = getStoredSession();
+                const activeUser = currentUser || storedUser;
+
+                if (activeUser && activeUser.role === 'worker') {
+                  const myPhone = activeUser.phone ? activeUser.phone.replace(/\D/g, '').slice(-10) : '';
+                  const delPhone = deletedPhone ? String(deletedPhone).replace(/\D/g, '').slice(-10) : '';
+
+                  // Find helper in current workers list to compare name, phone, or id
+                  const targetWorker = prev.find((w) => w.id === deletedId);
+                  const targetWorkerPhone = targetWorker?.phone ? targetWorker.phone.replace(/\D/g, '').slice(-10) : '';
+                  const targetWorkerName = targetWorker?.name?.toLowerCase();
+                  const myName = activeUser.fullName?.toLowerCase();
+
+                  const isMe =
+                    (deletedId && (deletedId === activeUser.id || (targetWorker && targetWorker.id === activeUser.id))) ||
+                    (deletedUserId && deletedUserId === activeUser.id) ||
+                    (delPhone && myPhone && delPhone === myPhone) ||
+                    (targetWorkerPhone && myPhone && targetWorkerPhone === myPhone) ||
+                    (targetWorkerName && myName && targetWorkerName === myName);
+
+                  if (isMe) {
+                    console.warn('Realtime event: Logged-in helper record deleted by admin. Triggering real-time logout.');
+                    setTimeout(() => {
+                      forceHelperLogout('Your helper account has been removed by the administrator.');
+                    }, 50);
+                  }
+                }
+
+                const next = prev.filter((w) => w.id !== deletedId);
+                try {
+                  localStorage.setItem(STORAGE_LIVE_WORKERS, JSON.stringify(next));
+                } catch {}
+                return next;
+              });
             }
           }
         )
@@ -402,7 +482,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteHelperFromSupabase(id).catch(console.warn);
   };
 
-  const logout = () => {
+  // ── Session Verification Guard on App Load, Route Navigation & Screen Wakeup ──
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'worker') return;
+
+    let isSubscribed = true;
+
+    const verifyCurrentSession = async () => {
+      const exists = await checkHelperExistsInSupabase(currentUser);
+      if (isSubscribed && !exists) {
+        console.warn('Session verification guard: Helper record not found in public.helpers.');
+        await forceHelperLogout('Your helper account has been removed by the administrator.');
+      }
+    };
+
+    // 1. Run check on initial load & view navigation
+    verifyCurrentSession();
+
+    // 2. Run check when device screen wakes up or browser tab gains focus
+    const handleWakeup = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        verifyCurrentSession();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleWakeup);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleWakeup);
+    }
+
+    return () => {
+      isSubscribed = false;
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleWakeup);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleWakeup);
+      }
+    };
+  }, [currentUser, view, forceHelperLogout]);
+
+  const logout = async () => {
+    try {
+      if (isSupabaseConfigured && supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch (err) {
+      console.warn('Supabase auth.signOut note:', err);
+    }
     clearSession();
     setCurrentUser(null);
     setView('home');
@@ -438,6 +567,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentUser,
       setCurrentUser,
       logout,
+      forceHelperLogout,
+      globalToast,
+      setGlobalToast,
+      showToast,
       addWorker,
       updateWorker,
       removeWorker,
@@ -465,6 +598,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       authModalOpen,
       authModalRole,
       authModalWorkerMode,
+      globalToast,
+      forceHelperLogout,
+      showToast,
     ]
   );
 

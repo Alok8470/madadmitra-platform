@@ -298,11 +298,19 @@ export async function updateHelperInSupabase(
   }
 }
 
+export interface DeleteHelperOptions {
+  userId?: string;
+  phone?: string;
+  docPaths?: (string | null | undefined)[];
+}
+
 /**
- * Deletes a helper from public.helpers and cleans up verifications and workers.
+ * Deletes a helper from public.helpers, cleans up verifications, purges storage KYC files,
+ * and resets their profiles role to 'customer' so they cannot re-enter the Helper Dashboard.
  */
 export async function deleteHelperFromSupabase(
-  id: string
+  id: string,
+  options?: DeleteHelperOptions
 ): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured || !supabase) {
     return { success: true };
@@ -311,29 +319,164 @@ export async function deleteHelperFromSupabase(
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-    // 1. Delete from public.helpers
-    if (isUuid) {
-      await supabase.from('helpers').delete().eq('id', id);
-    } else {
-      await supabase.from('helpers').delete().eq('phone', id);
+    // 1. Discover helper details (user_id, phone, KYC storage paths) if not passed
+    let targetUserId = options?.userId;
+    let targetPhone = options?.phone;
+    const filesToDelete = new Set<string>();
+
+    if (options?.docPaths) {
+      options.docPaths.filter(Boolean).forEach((p) => filesToDelete.add(p as string));
     }
 
-    // 2. Delete from public.workers
-    if (isUuid) {
-      await supabase.from('workers').delete().eq('id', id);
-    } else {
-      await supabase.from('workers').delete().eq('phone', id);
+    try {
+      const query = supabase.from('helpers').select('id, user_id, phone, aadhaar_front_path, aadhaar_back_path, selfie_path');
+      const { data: helperRow } = isUuid
+        ? await query.eq('id', id).maybeSingle()
+        : await query.eq('phone', id).maybeSingle();
+
+      if (helperRow) {
+        if (!targetUserId && helperRow.user_id) targetUserId = helperRow.user_id;
+        if (!targetPhone && helperRow.phone) targetPhone = helperRow.phone;
+        if (helperRow.aadhaar_front_path) filesToDelete.add(helperRow.aadhaar_front_path);
+        if (helperRow.aadhaar_back_path) filesToDelete.add(helperRow.aadhaar_back_path);
+        if (helperRow.selfie_path) filesToDelete.add(helperRow.selfie_path);
+      }
+    } catch (fetchErr) {
+      console.warn('Pre-delete helper lookup note:', fetchErr);
     }
 
-    // 3. Delete from public.helper_verifications
+    // 2. Storage Bucket Cleanup: remove KYC files from helper-documents bucket
+    try {
+      // List and delete everything in id folder
+      const { data: idFiles } = await supabase.storage.from('helper-documents').list(id);
+      if (idFiles && idFiles.length > 0) {
+        idFiles.forEach((f) => filesToDelete.add(`${id}/${f.name}`));
+      }
+
+      // If user_id is known, also list and delete in user_id folder
+      if (targetUserId && targetUserId !== id) {
+        const { data: userFiles } = await supabase.storage.from('helper-documents').list(targetUserId);
+        if (userFiles && userFiles.length > 0) {
+          userFiles.forEach((f) => filesToDelete.add(`${targetUserId}/${f.name}`));
+        }
+      }
+
+      const fileList = Array.from(filesToDelete).filter(Boolean);
+      if (fileList.length > 0) {
+        const { error: storageErr } = await supabase.storage.from('helper-documents').remove(fileList);
+        if (storageErr) {
+          console.warn('Storage files cleanup note:', storageErr.message);
+        }
+      }
+    } catch (storageException) {
+      console.warn('Storage purge exception:', storageException);
+    }
+
+    // 3. Reset profile role to 'customer' in public.profiles so helper session cannot re-enter
+    try {
+      if (targetUserId) {
+        await supabase
+          .from('profiles')
+          .update({ role: 'customer', updated_at: new Date().toISOString() })
+          .eq('id', targetUserId);
+      } else if (targetPhone) {
+        const digits = targetPhone.replace(/\D/g, '').slice(-10);
+        if (digits.length >= 8) {
+          await supabase
+            .from('profiles')
+            .update({ role: 'customer', updated_at: new Date().toISOString() })
+            .ilike('phone', `%${digits}%`);
+        }
+      }
+    } catch (profErr) {
+      console.warn('Profile role downgrade note:', profErr);
+    }
+
+    // 4. Delete from public.helper_verifications
+    try {
+      if (isUuid) {
+        await supabase.from('helper_verifications').delete().eq('helper_id', id);
+      }
+      if (targetUserId && targetUserId !== id) {
+        await supabase.from('helper_verifications').delete().eq('helper_id', targetUserId);
+      }
+    } catch (verErr) {
+      console.warn('helper_verifications cleanup note:', verErr);
+    }
+
+    // 5. Delete from public.workers (legacy sync table)
+    try {
+      if (isUuid) {
+        await supabase.from('workers').delete().eq('id', id);
+      } else {
+        await supabase.from('workers').delete().eq('phone', id);
+      }
+    } catch (wrkErr) {
+      console.warn('workers table delete note:', wrkErr);
+    }
+
+    // 6. Delete from public.helpers (PRIMARY table — triggers Realtime DELETE event!)
     if (isUuid) {
-      await supabase.from('helper_verifications').delete().eq('helper_id', id);
+      const { error: delErr } = await supabase.from('helpers').delete().eq('id', id);
+      if (delErr) throw delErr;
+    } else {
+      const { error: delErr } = await supabase.from('helpers').delete().eq('phone', id);
+      if (delErr) throw delErr;
     }
 
     return { success: true };
   } catch (err: any) {
     console.error('Delete helper error:', err);
     return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Verifies whether a helper record still exists in Supabase public.helpers table.
+ * Used for session verification guards on app load, route navigation, and tab wake-up.
+ */
+export async function checkHelperExistsInSupabase(user: { id?: string; phone?: string; role?: string }): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase || user.role !== 'worker') {
+    return true;
+  }
+
+  try {
+    const isUuid = user.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
+
+    // 1. Try finding by UUID (primary key id or user_id)
+    if (isUuid) {
+      const { data, error } = await supabase
+        .from('helpers')
+        .select('id')
+        .or(`id.eq.${user.id},user_id.eq.${user.id}`)
+        .maybeSingle();
+
+      if (!error && data) {
+        return true;
+      }
+    }
+
+    // 2. Try finding by phone
+    if (user.phone) {
+      const cleanDigits = user.phone.replace(/\D/g, '').slice(-10);
+      if (cleanDigits.length >= 8) {
+        const { data, error } = await supabase
+          .from('helpers')
+          .select('id')
+          .ilike('phone', `%${cleanDigits}%`)
+          .maybeSingle();
+
+        if (!error && data) {
+          return true;
+        }
+      }
+    }
+
+    // No row found in public.helpers — confirmed removed!
+    return false;
+  } catch (err) {
+    console.warn('Helper existence check exception:', err);
+    return true; // Keep session on network/offline failure
   }
 }
 

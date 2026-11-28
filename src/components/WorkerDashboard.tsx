@@ -44,7 +44,7 @@ interface IncomingJobOffer {
 }
 
 export default function WorkerDashboard() {
-  const { workers, toggleWorkerOnline, bookings, addBooking, cancelBooking, setView, currentUser, openAuthModal } = useApp();
+  const { workers, toggleWorkerOnline, bookings, addBooking, cancelBooking, setView, currentUser, openAuthModal, forceHelperLogout } = useApp();
   const { language } = useLanguage();
   const isHi = language === 'hi';
 
@@ -246,6 +246,43 @@ export default function WorkerDashboard() {
   const myBookings = bookings.filter((b) => b.workerName === me.name || b.workerId === me.id);
   const activeBookings = myBookings.filter((b) => b.status === 'accepted' || b.status === 'in_progress');
   const completedJobs = myBookings.filter((b) => b.status === 'completed').length;
+
+  // ── Dedicated Real-Time Delete Guard for Helper Dashboard ──
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !currentUser || currentUser.role !== 'worker') return;
+
+    const myHelperId = me.id;
+    const authUserId = currentUser.id;
+    const myPhoneDigits = (currentUser.phone || me.phone || '').replace(/\D/g, '').slice(-10);
+
+    const channel = supabase
+      .channel(`worker_dashboard_delete_guard_${myHelperId}`)
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'helpers' },
+        async (payload) => {
+          const old = (payload.old as any) || {};
+          const delId = old.id;
+          const delUserId = old.user_id;
+          const delPhone = old.phone ? String(old.phone).replace(/\D/g, '').slice(-10) : '';
+
+          if (
+            delId === myHelperId ||
+            delId === authUserId ||
+            (delUserId && (delUserId === authUserId || delUserId === myHelperId)) ||
+            (delPhone && myPhoneDigits && delPhone === myPhoneDigits)
+          ) {
+            console.warn('WorkerDashboard: Helper record deleted by admin. Triggering real-time logout.');
+            await forceHelperLogout('Your helper account has been removed by the administrator.');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [me.id, me.phone, currentUser, forceHelperLogout]);
 
   // Real-time subscription to incoming dispatch offers
   useEffect(() => {
