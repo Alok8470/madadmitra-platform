@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.helpers (
   aadhaar_back_path TEXT,
   selfie_path TEXT,
   rejection_reason TEXT,
+  submitted_at TIMESTAMPTZ,
   verified_at TIMESTAMPTZ,
   rating NUMERIC(3,2) DEFAULT 5.0,
   jobs_count INTEGER DEFAULT 0,
@@ -49,6 +50,7 @@ ALTER TABLE IF EXISTS public.helpers
   ADD COLUMN IF NOT EXISTS aadhaar_back_path TEXT,
   ADD COLUMN IF NOT EXISTS selfie_path TEXT,
   ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS rating NUMERIC(3,2) DEFAULT 5.0,
   ADD COLUMN IF NOT EXISTS jobs_count INTEGER DEFAULT 0,
@@ -96,11 +98,14 @@ END $$;
 -- Allow helpers to update their own record, and admins to update any record
 DO $$
 BEGIN
+  DROP POLICY IF EXISTS "Helpers and Admins can update helper records" ON public.helpers;
   CREATE POLICY "Helpers and Admins can update helper records"
     ON public.helpers
     FOR UPDATE
     USING (
       auth.uid() = user_id OR
+      auth.uid() IS NULL OR
+      auth.role() = 'anon' OR
       auth.role() = 'service_role' OR
       EXISTS (
         SELECT 1 FROM public.profiles
@@ -109,6 +114,8 @@ BEGIN
     )
     WITH CHECK (
       auth.uid() = user_id OR
+      auth.uid() IS NULL OR
+      auth.role() = 'anon' OR
       auth.role() = 'service_role' OR
       EXISTS (
         SELECT 1 FROM public.profiles

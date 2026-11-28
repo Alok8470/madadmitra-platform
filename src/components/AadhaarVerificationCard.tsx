@@ -92,6 +92,49 @@ function t(key: keyof typeof T, lang: 'en' | 'hi'): string {
   return T[key][lang];
 }
 
+/**
+ * Resolves the actual helper row from public.helpers by UUID id, user_id, or phone.
+ * Guarantees we target a valid Supabase row UUID.
+ */
+async function resolveHelperRow(userId: string, phone?: string) {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+
+  // 1. Try finding by primary key id (if userId is a UUID)
+  if (isUuid) {
+    const { data: byId } = await supabase
+      .from('helpers')
+      .select('id, user_id, full_name, phone, verification_status, aadhaar_last4, aadhaar_front_path, aadhaar_back_path, selfie_path, rejection_reason, submitted_at, verified_at')
+      .eq('id', userId)
+      .maybeSingle();
+    if (byId) return byId;
+
+    // 2. Try finding by user_id
+    const { data: byUserId } = await supabase
+      .from('helpers')
+      .select('id, user_id, full_name, phone, verification_status, aadhaar_last4, aadhaar_front_path, aadhaar_back_path, selfie_path, rejection_reason, submitted_at, verified_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (byUserId) return byUserId;
+  }
+
+  // 3. Try finding by phone if available
+  if (phone) {
+    const cleanDigits = phone.replace(/\D/g, '').slice(-10);
+    if (cleanDigits.length >= 8) {
+      const { data: byPhone } = await supabase
+        .from('helpers')
+        .select('id, user_id, full_name, phone, verification_status, aadhaar_last4, aadhaar_front_path, aadhaar_back_path, selfie_path, rejection_reason, submitted_at, verified_at')
+        .ilike('phone', `%${cleanDigits}%`)
+        .maybeSingle();
+      if (byPhone) return byPhone;
+    }
+  }
+
+  return null;
+}
+
 function StatusBadge({
   status,
   lang,
@@ -279,28 +322,57 @@ export default function AadhaarVerificationCard({
 
   // ── Fetch existing record ────────────────────────────────────────────────
   useEffect(() => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !supabase) {
       setLoading(false);
       return;
     }
     async function fetchVerification() {
-      const { data, error } = await supabase
-        .from('helper_verifications')
-        .select('*')
-        .eq('helper_id', userId)
-        .single();
+      try {
+        // 1. Primary: Check public.helpers table
+        const helperRecord = await resolveHelperRow(userId, helperPhone);
+        if (helperRecord) {
+          const vStatus = (helperRecord.verification_status as VerificationStatus) || 'unsubmitted';
+          if (vStatus !== 'unsubmitted') {
+            setStatus(vStatus);
+            setVerification({
+              id: helperRecord.id,
+              helper_id: helperRecord.id,
+              aadhaar_last4: helperRecord.aadhaar_last4 || '',
+              aadhaar_front_path: helperRecord.aadhaar_front_path || null,
+              aadhaar_back_path: helperRecord.aadhaar_back_path || null,
+              selfie_path: helperRecord.selfie_path || null,
+              verification_status: vStatus,
+              rejection_reason: helperRecord.rejection_reason || null,
+              submitted_at: helperRecord.submitted_at || null,
+              verified_at: helperRecord.verified_at || null,
+            });
+            setLoading(false);
+            return;
+          }
+        }
 
-      if (data && !error) {
-        setVerification(data as HelperVerification);
-        setStatus((data as HelperVerification).verification_status);
-      } else {
-        // No record yet — stays unsubmitted
+        // 2. Secondary check: helper_verifications table for legacy records
+        const { data: legData } = await supabase
+          .from('helper_verifications')
+          .select('*')
+          .eq('helper_id', userId)
+          .maybeSingle();
+
+        if (legData) {
+          setVerification(legData as HelperVerification);
+          setStatus((legData as HelperVerification).verification_status);
+        } else {
+          setStatus('unsubmitted');
+        }
+      } catch (err) {
+        console.warn('Error fetching helper verification state:', err);
         setStatus('unsubmitted');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     fetchVerification();
-  }, [userId]);
+  }, [userId, helperPhone]);
 
   // ── Revoke preview URLs on unmount ───────────────────────────────────────
   useEffect(() => {
@@ -341,86 +413,184 @@ export default function AadhaarVerificationCard({
   // ── Submit handler ───────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || !isSupabaseConfigured) return;
+    if (!canSubmit || !isSupabaseConfigured || !supabase) return;
 
     setSubmitting(true);
     setToastError(null);
     setSuccessMsg(null);
 
     try {
-      // 1. Client-Side Image Auto-Compression before upload (max 1280px, quality 0.75, < ~300KB)
+      // 1. Resolve or ensure a valid helper row exists in public.helpers with a real UUID
+      let targetHelperId: string | null = null;
+      const existingHelper = await resolveHelperRow(userId, helperPhone);
+
+      if (existingHelper) {
+        targetHelperId = existingHelper.id;
+      } else {
+        // If helper row does not exist in public.helpers, insert one so it receives a real Supabase UUID
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+        const newHelperPayload: Record<string, any> = {
+          full_name: helperName || 'Service Partner',
+          phone: helperPhone || '+910000000000',
+          service_category: 'electrician',
+          primary_area: 'Deoria',
+          serviceable_areas: ['Deoria'],
+          is_online: true,
+          is_verified: false,
+          verification_status: 'pending',
+          updated_at: new Date().toISOString(),
+        };
+        if (isUuid) {
+          newHelperPayload.user_id = userId;
+        }
+
+        const { data: inserted, error: insertErr } = await supabase
+          .from('helpers')
+          .insert([newHelperPayload])
+          .select('id')
+          .single();
+
+        if (!insertErr && inserted?.id) {
+          targetHelperId = inserted.id;
+        } else {
+          console.warn('Could not auto-insert helper row:', insertErr?.message);
+          if (isUuid) targetHelperId = userId;
+        }
+      }
+
+      const effectiveHelperId = targetHelperId || userId;
+
+      // 2. Client-Side Image Auto-Compression before upload (max 1280px, quality 0.75, < ~300KB)
       const [compressedFront, compressedBack, compressedSelfie] = await Promise.all([
         compressImage(frontFile!, { maxWidth: 1280, maxHeight: 1280, quality: 0.75 }),
         compressImage(backFile!, { maxWidth: 1280, maxHeight: 1280, quality: 0.75 }),
         compressImage(selfieFile!, { maxWidth: 1280, maxHeight: 1280, quality: 0.75 }),
       ]);
 
-      // 2. Clean storage paths with timestamp
+      // 3. Clean storage paths with timestamp and resolved helper ID
       const timestamp = Date.now();
-      const frontPath = `${userId}/aadhaar_front_${timestamp}.jpg`;
-      const backPath = `${userId}/aadhaar_back_${timestamp}.jpg`;
-      const selfiePath = `${userId}/selfie_${timestamp}.jpg`;
+      const frontPath = `${effectiveHelperId}/aadhaar_front_${timestamp}.jpg`;
+      const backPath = `${effectiveHelperId}/aadhaar_back_${timestamp}.jpg`;
+      const selfiePath = `${effectiveHelperId}/selfie_${timestamp}.jpg`;
 
-      // 3. Upload front image
+      // 4. Upload front image
       const { data: frontData, error: frontErr } = await supabase.storage
         .from('helper-documents')
         .upload(frontPath, compressedFront, { contentType: 'image/jpeg', upsert: true });
       if (frontErr) throw new Error(`Front Aadhaar upload failed: ${frontErr.message}`);
 
-      // 4. Upload back image
+      // 5. Upload back image
       const { data: backData, error: backErr } = await supabase.storage
         .from('helper-documents')
         .upload(backPath, compressedBack, { contentType: 'image/jpeg', upsert: true });
       if (backErr) throw new Error(`Back Aadhaar upload failed: ${backErr.message}`);
 
-      // 5. Upload live selfie
+      // 6. Upload live selfie
       const { data: selfieData, error: selfieErr } = await supabase.storage
         .from('helper-documents')
         .upload(selfiePath, compressedSelfie, { contentType: 'image/jpeg', upsert: true });
       if (selfieErr) throw new Error(`Live selfie upload failed: ${selfieErr.message}`);
 
-      // 6. After all 3 uploads succeed, update helper's row in public.helpers
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-      const updateDocPayload = {
-        aadhaar_last4: last4,
-        aadhaar_front_path: frontData?.path || frontPath,
-        aadhaar_back_path: backData?.path || backPath,
-        selfie_path: selfieData?.path || selfiePath,
-        verification_status: 'pending' as const,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (isUuid) {
-        const { error: helperErr } = await supabase
-          .from('helpers')
-          .update(updateDocPayload)
-          .or(`id.eq.${userId},user_id.eq.${userId}`);
-        if (helperErr) throw new Error(`Failed to update helper profile: ${helperErr.message}`);
-      } else if (helperPhone) {
-        const { error: helperErr } = await supabase
-          .from('helpers')
-          .update(updateDocPayload)
-          .eq('phone', helperPhone);
-        if (helperErr) throw new Error(`Failed to update helper profile: ${helperErr.message}`);
-      }
-
-      // 7. Upsert DB record in helper_verifications for backward-compatibility
-      const { error: dbErr } = await supabase.from('helper_verifications').upsert({
-        helper_id: userId,
+      // 7. Update helper row in public.helpers with verification details
+      const nowIso = new Date().toISOString();
+      const updatePayload: Record<string, any> = {
         aadhaar_last4: last4,
         aadhaar_front_path: frontData?.path || frontPath,
         aadhaar_back_path: backData?.path || backPath,
         selfie_path: selfieData?.path || selfiePath,
         verification_status: 'pending',
-        submitted_at: new Date().toISOString(),
-        helper_name: helperName,
-        helper_phone: helperPhone,
-      });
-      if (dbErr) {
-        console.warn('helper_verifications sync note:', dbErr.message);
+        submitted_at: nowIso,
+        updated_at: nowIso,
+      };
+
+      // Perform update on public.helpers
+      let updateError: any = null;
+      if (targetHelperId) {
+        const { error } = await supabase
+          .from('helpers')
+          .update(updatePayload)
+          .eq('id', targetHelperId);
+        updateError = error;
+      } else {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+        if (isUuid) {
+          const { error } = await supabase
+            .from('helpers')
+            .update(updatePayload)
+            .or(`id.eq.${userId},user_id.eq.${userId}`);
+          updateError = error;
+        } else if (helperPhone) {
+          const cleanDigits = helperPhone.replace(/\D/g, '').slice(-10);
+          const { error } = await supabase
+            .from('helpers')
+            .update(updatePayload)
+            .ilike('phone', `%${cleanDigits}%`);
+          updateError = error;
+        }
+      }
+
+      // If update failed because 'submitted_at' column is missing in older DB schema, retry without it
+      if (updateError && updateError.message?.toLowerCase().includes('submitted_at')) {
+        delete updatePayload.submitted_at;
+        if (targetHelperId) {
+          const { error } = await supabase
+            .from('helpers')
+            .update(updatePayload)
+            .eq('id', targetHelperId);
+          updateError = error;
+        } else {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+          if (isUuid) {
+            const { error } = await supabase
+              .from('helpers')
+              .update(updatePayload)
+              .or(`id.eq.${userId},user_id.eq.${userId}`);
+            updateError = error;
+          } else if (helperPhone) {
+            const cleanDigits = helperPhone.replace(/\D/g, '').slice(-10);
+            const { error } = await supabase
+              .from('helpers')
+              .update(updatePayload)
+              .ilike('phone', `%${cleanDigits}%`);
+            updateError = error;
+          }
+        }
+      }
+
+      // If database update returned an error, log and display exact error message
+      if (updateError) {
+        console.error('Helper record update error in public.helpers:', updateError);
+        throw new Error(`Failed to save verification record: ${updateError.message}`);
+      }
+
+      // 8. Secondary upsert into helper_verifications for backward-compatibility
+      try {
+        await supabase.from('helper_verifications').upsert({
+          helper_id: effectiveHelperId,
+          aadhaar_last4: last4,
+          aadhaar_front_path: frontData?.path || frontPath,
+          aadhaar_back_path: backData?.path || backPath,
+          selfie_path: selfieData?.path || selfiePath,
+          verification_status: 'pending',
+          submitted_at: nowIso,
+          helper_name: helperName,
+          helper_phone: helperPhone,
+        });
+      } catch (dbErr) {
+        console.warn('helper_verifications legacy sync note:', dbErr);
       }
 
       setStatus('pending');
+      setVerification({
+        id: effectiveHelperId,
+        helper_id: effectiveHelperId,
+        aadhaar_last4: last4,
+        aadhaar_front_path: frontData?.path || frontPath,
+        aadhaar_back_path: backData?.path || backPath,
+        selfie_path: selfieData?.path || selfiePath,
+        verification_status: 'pending',
+        submitted_at: nowIso,
+      });
       setSuccessMsg(t('successMsg', lang));
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);

@@ -527,7 +527,7 @@ export default function AdminVerificationPanel() {
           selfie_path: row.selfie_path || null,
           verification_status: (row.verification_status as VerificationStatus) || 'unsubmitted',
           rejection_reason: row.rejection_reason || null,
-          submitted_at: row.created_at || null,
+          submitted_at: row.submitted_at || row.updated_at || row.created_at || null,
           verified_at: row.verified_at || null,
         }));
         setRecords(mappedRecords);
